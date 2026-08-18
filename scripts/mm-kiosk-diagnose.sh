@@ -86,11 +86,12 @@ echo
 
 if ! sudo -u "${KIOSK_USER}" DISPLAY="${DISPLAY}" xdpyinfo >/dev/null 2>&1; then
     echo "Aanbevolen fix:"
-    echo "  sudo bash ${SCRIPT_DIR}/mm-kiosk-fix-display.sh"
+    echo "  sudo bash ${SCRIPT_DIR}/mm-kiosk-fix-lightdm.sh"
     echo "  sudo reboot"
     echo
-    echo "Sync daarna /opt met de repo:"
-    echo "  cd ~/meldingsmonitor-kiosk && sudo bash scripts/mm-kiosk-update.sh"
+    echo "Of fallback voor huidige desktop-gebruiker:"
+    echo "  sudo bash ${SCRIPT_DIR}/mm-kiosk-install-desktop-autostart.sh martijn"
+    echo "  sudo reboot"
 fi
 
 if ! systemctl is-active lightdm.service >/dev/null 2>&1; then

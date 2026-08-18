@@ -38,26 +38,7 @@ usermod -aG video,render,input,tty "${KIOSK_USER}" 2>/dev/null || true
 
 mkdir -p /etc/lightdm/lightdm.conf.d
 
-for conf in /etc/lightdm/lightdm.conf.d/*.conf; do
-    [[ -f "${conf}" ]] || continue
-    [[ "${conf}" == */50-mm-kiosk.conf ]] && continue
-    [[ "${conf}" == *.disabled-by-mm-kiosk ]] && continue
-
-    if grep -qE 'autologin-(user|session)|^user-session=' "${conf}" 2>/dev/null; then
-        log "Conflicterende lightdm-config uitgeschakeld: ${conf}"
-        mv "${conf}" "${conf}.disabled-by-mm-kiosk"
-    fi
-done
-
-cat > /etc/lightdm/lightdm.conf.d/50-mm-kiosk.conf <<EOF
-[Seat:*]
-autologin-user=${KIOSK_USER}
-autologin-session=openbox
-user-session=openbox
-autologin-user-timeout=0
-EOF
-
-"${SCRIPT_DIR}/mm-kiosk-configure-openbox-autostart.sh"
+"${SCRIPT_DIR}/mm-kiosk-fix-lightdm.sh"
 
 if [[ -f /usr/share/xsessions/openbox.desktop ]]; then
     log "Openbox-sessie gevonden."
@@ -77,24 +58,9 @@ fi
 
 echo "/usr/sbin/lightdm" > /etc/X11/default-display-manager
 systemctl set-default graphical.target
-systemctl enable lightdm.service
 
-log "lightdm herstarten."
-systemctl restart lightdm.service
+log "lightdm is geconfigureerd via mm-kiosk-fix-lightdm.sh."
+systemctl restart mm-kiosk.service 2>/dev/null || true
 
-for _ in $(seq 1 30); do
-    if sudo -u "${KIOSK_USER}" DISPLAY=:0 xdpyinfo >/dev/null 2>&1; then
-        log "X11 op :0 is beschikbaar voor ${KIOSK_USER}."
-        systemctl restart mm-kiosk.service
-        echo
-        echo "Scherm hersteld. Chromium zou nu moeten starten."
-        exit 0
-    fi
-    sleep 1
-done
-
-log "X11 start nog niet. lightdm-log:"
-journalctl -u lightdm.service -n 20 --no-pager || true
 echo
-echo "Herstart het apparaat: sudo reboot"
-exit 1
+echo "Scherm hersteld. Herstart aanbevolen: sudo reboot"

@@ -54,18 +54,24 @@ if command -v xset >/dev/null 2>&1; then
 fi
 
 while true; do
-    "${CHROMIUM}" \
-        --kiosk \
-        --no-first-run \
-        --no-default-browser-check \
-        --noerrdialogs \
-        --disable-infobars \
-        --disable-session-crashed-bubble \
-        --disable-restore-session-state \
-        --disable-features=TranslateUI \
-        --autoplay-policy=no-user-gesture-required \
-        --check-for-update-interval=31536000 \
-        "${TARGET_URL}"
+    CHROMIUM_ARGS=(
+        --kiosk
+        --no-first-run
+        --no-default-browser-check
+        --noerrdialogs
+        --disable-infobars
+        --disable-session-crashed-bubble
+        --disable-restore-session-state
+        --disable-features=TranslateUI
+        --autoplay-policy=no-user-gesture-required
+        --check-for-update-interval=31536000
+    )
+
+    if [[ -n "${WAYLAND_DISPLAY:-}" && -z "${DISPLAY:-}" ]]; then
+        CHROMIUM_ARGS+=(--ozone-platform=wayland)
+    fi
+
+    "${CHROMIUM}" "${CHROMIUM_ARGS[@]}" "${TARGET_URL}"
 
     sleep 5
 done
