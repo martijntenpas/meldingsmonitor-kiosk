@@ -60,8 +60,17 @@ def run_script(name: str, *args: str, timeout: int = 30) -> subprocess.Completed
     )
 
 
+def safe_run_script(name: str, *args: str, timeout: int = 30) -> subprocess.CompletedProcess[str] | None:
+    try:
+        return run_script(name, *args, timeout=timeout)
+    except (FileNotFoundError, subprocess.TimeoutExpired, OSError):
+        return None
+
+
 def wifi_available() -> bool:
-    return run_script("mm-kiosk-wifi-available.sh", timeout=5).returncode == 0
+    result = safe_run_script("mm-kiosk-wifi-available.sh", timeout=5)
+
+    return result is not None and result.returncode == 0
 
 
 def ap_is_active() -> bool:
@@ -92,7 +101,8 @@ def read_setup_ssid() -> str:
 
 def provisioning_context() -> dict:
     config = load_config()
-    online = run_script("mm-kiosk-network-check.sh").returncode == 0
+    network_check = safe_run_script("mm-kiosk-network-check.sh", timeout=15)
+    online = network_check is not None and network_check.returncode == 0
     web_port = int(config.get("web_port", 80))
     setup_ap_ip = str(config.get("setup_ap_ip", "192.168.4.1"))
     ap_active = ap_is_active()
@@ -113,6 +123,11 @@ def provisioning_context() -> dict:
         "homepage_configured": is_homepage_configured(config.get("homepage")),
         "setup_needed": is_setup_needed(config, online=online),
     }
+
+
+@app.get("/api/health")
+def health():
+    return jsonify({"ok": True})
 
 
 def render_qr_svg(data: str) -> str:
@@ -184,7 +199,8 @@ def update_config():
     mark_complete = bool(payload.get("complete", False))
 
     if mark_complete:
-        if not run_script("mm-kiosk-network-check.sh").returncode == 0:
+        network_check = safe_run_script("mm-kiosk-network-check.sh", timeout=15)
+        if network_check is None or network_check.returncode != 0:
             return jsonify({"ok": False, "message": "Geen internetverbinding. Controleer ethernet of koppel WiFi."}), 422
         config["setup_completed"] = True
         config["force_setup"] = False
@@ -278,7 +294,7 @@ def main() -> int:
         print("Provisioning server moet als root draaien.", file=sys.stderr)
         return 1
 
-    app.run(host=args.host, port=args.port, debug=False)
+    app.run(host=args.host, port=args.port, debug=False, threaded=True)
 
     return 0
 

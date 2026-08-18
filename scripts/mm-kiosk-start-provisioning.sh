@@ -57,10 +57,22 @@ ensure_watchdog() {
 if [[ -f "${PID_FILE}" ]]; then
     existing_pid="$(cat "${PID_FILE}")"
     if kill -0 "${existing_pid}" 2>/dev/null; then
-        log "Provisioning-server draait al (pid ${existing_pid})."
-        ensure_watchdog
-        exit 0
+        log "Bestaande provisioning-server stoppen (pid ${existing_pid})."
+        kill "${existing_pid}" 2>/dev/null || true
+        sleep 1
+        kill -9 "${existing_pid}" 2>/dev/null || true
     fi
+
+    rm -f "${PID_FILE}"
+fi
+
+if [[ -f "${WATCHDOG_PID_FILE}" ]]; then
+    existing_watchdog="$(cat "${WATCHDOG_PID_FILE}")"
+    if kill -0 "${existing_watchdog}" 2>/dev/null; then
+        kill "${existing_watchdog}" 2>/dev/null || true
+    fi
+
+    rm -f "${WATCHDOG_PID_FILE}"
 fi
 
 log "Provisioning-server starten op poort ${WEB_PORT}."

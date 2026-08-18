@@ -168,14 +168,6 @@ saveBtn.addEventListener('click', () => saveConfig(false));
 finishBtn.addEventListener('click', () => saveConfig(true));
 resetBtn.addEventListener('click', factoryReset);
 
-loadStatus()
-    .then((data) => {
-        if (data.wifi_available) {
-            return scanWifi();
-        }
-
-        return undefined;
-    })
-    .catch((error) => {
-        showFeedback(configFeedback, error.message, 'error');
-    });
+loadStatus().catch((error) => {
+    showFeedback(configFeedback, error.message, 'error');
+});

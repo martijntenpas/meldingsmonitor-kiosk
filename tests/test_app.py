@@ -36,10 +36,17 @@ def test_wifi_scan_skips_without_interface(client) -> None:
 
 
 def test_status_includes_wifi_available(client) -> None:
-    with patch("app.wifi_available", return_value=False), patch("app.run_script") as run_script:
-        run_script.return_value.returncode = 0
+    with patch("app.wifi_available", return_value=False), patch("app.safe_run_script") as safe_run_script:
+        safe_run_script.return_value.returncode = 0
 
         response = client.get("/api/status")
 
     assert response.status_code == 200
     assert response.json["wifi_available"] is False
+
+
+def test_health_endpoint(client) -> None:
+    response = client.get("/api/health")
+
+    assert response.status_code == 200
+    assert response.json == {"ok": True}

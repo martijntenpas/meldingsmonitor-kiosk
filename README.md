@@ -68,6 +68,18 @@ Na **Opslaan en starten** herstart het apparaat automatisch en opent het kazerne
 
 Apparaten **zonder WiFi** (alleen ethernet) slaan WiFi-instellingen automatisch over. De WiFi-sectie wordt dan verborgen.
 
+## Updates op een geïnstalleerd apparaat
+
+De systemd-service draait vanuit **`/opt/meldingsmonitor-kiosk`**.
+
+```bash
+cd /opt/meldingsmonitor-kiosk
+git pull
+sudo bash scripts/mm-kiosk-update.sh
+```
+
+`mm-kiosk-update.sh` kopieert de nieuwe bestanden, stopt de oude provisioning-server en herstart `mm-kiosk`.
+
 ## Setup opnieuw openen
 
 Via de webinterface onder **Geavanceerd → Factory reset**, of handmatig:
