@@ -104,6 +104,7 @@ EOF
 chmod 0755 /etc/xdg/openbox/autostart
 
 install -m 0644 "${TARGET_DIR}/systemd/mm-kiosk.service" /etc/systemd/system/mm-kiosk.service
+install -m 0644 "${TARGET_DIR}/systemd/mm-kiosk-web.service" /etc/systemd/system/mm-kiosk-web.service
 
 mkdir -p /etc/systemd/system/mm-kiosk.service.d
 cat > /etc/systemd/system/mm-kiosk.service.d/override.conf <<EOF
@@ -116,6 +117,7 @@ ExecStart=${TARGET_DIR}/scripts/mm-kiosk-boot.sh
 EOF
 
 systemctl daemon-reload
+systemctl enable mm-kiosk-web.service
 systemctl enable mm-kiosk.service
 systemctl enable lightdm.service 2>/dev/null || true
 

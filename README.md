@@ -78,7 +78,16 @@ git pull
 sudo bash scripts/mm-kiosk-update.sh
 ```
 
-`mm-kiosk-update.sh` kopieert de nieuwe bestanden, stopt de oude provisioning-server en herstart `mm-kiosk`.
+`mm-kiosk-update.sh` kopieert de nieuwe bestanden, installeert de web-server service en herstart `mm-kiosk-web` + `mm-kiosk`.
+
+### Noodoplossing zonder webinterface
+
+Als de instellingenpagina niet bereikbaar is:
+
+```bash
+sudo bash /opt/meldingsmonitor-kiosk/scripts/mm-kiosk-set-homepage.sh \
+  "https://meldingsmonitor.nl/kazernescherm/JOUW_KEY" complete
+```
 
 ## Setup opnieuw openen
 

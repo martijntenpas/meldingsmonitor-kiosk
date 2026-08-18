@@ -1,0 +1,16 @@
+[Unit]
+Description=MeldingsMonitor kiosk provisioning web server
+After=network-online.target NetworkManager.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+Environment=MM_KIOSK_CONFIG=/etc/meldingsmonitor-kiosk/config.json
+Environment=MM_KIOSK_SCRIPTS=/opt/meldingsmonitor-kiosk/scripts
+Environment=MM_KIOSK_STATE_DIR=/run/mm-kiosk
+ExecStart=/opt/meldingsmonitor-kiosk/scripts/mm-kiosk-run-web.sh
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
