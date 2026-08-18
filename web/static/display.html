@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>MeldingsMonitor kiosk instellen</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body class="display-body">
+    <main class="display-shell">
+        <header class="display-hero">
+            <p class="eyebrow">MeldingsMonitor</p>
+            <h1>Kazernescherm instellen</h1>
+            <p class="lead">Scan de QR-code om WiFi en het kazernescherm te configureren.</p>
+        </header>
+
+        <section class="display-card">
+            <div class="qr-frame">
+                <img id="setup-qr" src="/api/qr.svg" alt="QR-code voor kiosk-instellingen">
+            </div>
+            <p class="display-url" id="setup-url">Laden...</p>
+        </section>
+
+        <section class="display-steps card">
+            <h2>Zo werkt het</h2>
+            <ol>
+                <li id="step-wifi">Verbind met het setup-WiFi-netwerk als je nog geen internet hebt.</li>
+                <li>Scan de QR-code of open de link op je telefoon.</li>
+                <li>Koppel WiFi en plak de kazernescherm-link.</li>
+                <li>Klik op <strong>Opslaan en starten</strong>.</li>
+            </ol>
+        </section>
+    </main>
+
+    <script src="/static/display.js"></script>
+</body>
+</html>

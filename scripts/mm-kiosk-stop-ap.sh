@@ -23,3 +23,4 @@ if [[ -n "${WLAN}" ]] && command -v nmcli >/dev/null 2>&1; then
 fi
 
 log "Setup access point gestopt."
+rm -f "${MM_KIOSK_STATE_DIR}/setup-ssid" 2>/dev/null || true

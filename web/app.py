@@ -3,16 +3,27 @@
 from __future__ import annotations
 
 import argparse
+import io
 import json
 import os
 import subprocess
 import sys
 from pathlib import Path
 
-from flask import Flask, jsonify, request, send_from_directory
+import qrcode
+import qrcode.image.svg
+from flask import Flask, Response, jsonify, request, send_from_directory
+
+from kiosk_config import (
+    build_setup_url,
+    detect_local_ip,
+    is_homepage_configured,
+    is_setup_needed,
+)
 
 CONFIG_PATH = Path(os.environ.get("MM_KIOSK_CONFIG", "/etc/meldingsmonitor-kiosk/config.json"))
 SCRIPTS_DIR = Path(os.environ.get("MM_KIOSK_SCRIPTS", Path(__file__).resolve().parent.parent / "scripts"))
+STATE_DIR = Path(os.environ.get("MM_KIOSK_STATE_DIR", "/run/mm-kiosk"))
 STATIC_DIR = Path(__file__).resolve().parent / "static"
 
 app = Flask(__name__, static_folder=str(STATIC_DIR), static_url_path="/static")
@@ -48,23 +59,91 @@ def run_script(name: str, *args: str) -> subprocess.CompletedProcess[str]:
     )
 
 
+def ap_is_active() -> bool:
+    pid_file = STATE_DIR / "hostapd.pid"
+    if not pid_file.exists():
+        return False
+
+    try:
+        pid = int(pid_file.read_text(encoding="utf-8").strip())
+    except ValueError:
+        return False
+
+    try:
+        os.kill(pid, 0)
+    except OSError:
+        return False
+
+    return True
+
+
+def read_setup_ssid() -> str:
+    ssid_file = STATE_DIR / "setup-ssid"
+    if ssid_file.exists():
+        return ssid_file.read_text(encoding="utf-8").strip()
+
+    return ""
+
+
+def provisioning_context() -> dict:
+    config = load_config()
+    online = run_script("mm-kiosk-network-check.sh").returncode == 0
+    web_port = int(config.get("web_port", 80))
+    setup_ap_ip = str(config.get("setup_ap_ip", "192.168.4.1"))
+    ap_active = ap_is_active()
+    setup_url = build_setup_url(
+        web_port=web_port,
+        setup_ap_ip=setup_ap_ip,
+        ap_active=ap_active,
+        local_ip=detect_local_ip(),
+    )
+
+    return {
+        "config": config,
+        "online": online,
+        "setup_url": setup_url,
+        "setup_ap_active": ap_active,
+        "setup_ssid": read_setup_ssid(),
+        "homepage_configured": is_homepage_configured(config.get("homepage")),
+        "setup_needed": is_setup_needed(config, online=online),
+    }
+
+
+def render_qr_svg(data: str) -> str:
+    factory = qrcode.image.svg.SvgPathImage
+    image = qrcode.make(data, image_factory=factory, box_size=8, border=2)
+    stream = io.BytesIO()
+    image.save(stream)
+    return stream.getvalue().decode("utf-8")
+
+
 @app.get("/")
 def index():
     return send_from_directory(STATIC_DIR, "index.html")
 
 
+@app.get("/display")
+def display():
+    return send_from_directory(STATIC_DIR, "display.html")
+
+
 @app.get("/api/status")
 def status():
-    config = load_config()
-    online = run_script("mm-kiosk-network-check.sh").returncode == 0
+    context = provisioning_context()
+    config = context["config"]
 
     return jsonify(
         {
-            "online": online,
+            "online": context["online"],
             "setup_completed": bool(config.get("setup_completed")),
             "homepage": config.get("homepage", ""),
+            "homepage_configured": context["homepage_configured"],
+            "setup_needed": context["setup_needed"],
             "check_url": config.get("check_url", ""),
             "setup_ap_ip": config.get("setup_ap_ip", "192.168.4.1"),
+            "setup_url": context["setup_url"],
+            "setup_ap_active": context["setup_ap_active"],
+            "setup_ssid": context["setup_ssid"],
         }
     )
 
@@ -77,6 +156,7 @@ def get_config():
         {
             "homepage": config.get("homepage", ""),
             "setup_completed": bool(config.get("setup_completed")),
+            "homepage_configured": is_homepage_configured(config.get("homepage")),
         }
     )
 
@@ -89,8 +169,8 @@ def update_config():
     if not homepage.startswith("https://"):
         return jsonify({"ok": False, "message": "Gebruik een HTTPS-URL voor het kazernescherm."}), 422
 
-    if "meldingsmonitor" not in homepage and "kazernescherm" not in homepage:
-        return jsonify({"ok": False, "message": "URL lijkt geen MeldingsMonitor kazernescherm-link."}), 422
+    if not is_homepage_configured(homepage):
+        return jsonify({"ok": False, "message": "URL lijkt geen geldige MeldingsMonitor kazernescherm-link."}), 422
 
     config = load_config()
     config["homepage"] = homepage
@@ -143,11 +223,36 @@ def wifi_connect():
     return jsonify({"ok": True, "online": online})
 
 
+@app.post("/api/factory-reset")
+def factory_reset():
+    payload = request.get_json(silent=True) or {}
+
+    if not bool(payload.get("confirm")):
+        return jsonify({"ok": False, "message": "Bevestig de factory reset."}), 422
+
+    result = run_script("mm-kiosk-factory-reset.sh")
+
+    if result.returncode != 0:
+        message = result.stderr.strip() or result.stdout.strip() or "Factory reset mislukt."
+        return jsonify({"ok": False, "message": message}), 500
+
+    subprocess.Popen(["systemctl", "reboot"])
+
+    return jsonify({"ok": True})
+
+
 @app.post("/api/reboot")
 def reboot():
     subprocess.Popen(["systemctl", "reboot"])
 
     return jsonify({"ok": True})
+
+
+@app.get("/api/qr.svg")
+def qr_svg():
+    context = provisioning_context()
+    svg = render_qr_svg(context["setup_url"])
+    return Response(svg, mimetype="image/svg+xml")
 
 
 def main() -> int:

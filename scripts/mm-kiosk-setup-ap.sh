@@ -75,3 +75,4 @@ hostapd "${HOSTAPD_CONF}" >> "${MM_KIOSK_LOG}" 2>&1 &
 echo $! > "${MM_KIOSK_STATE_DIR}/hostapd.pid"
 
 log "Setup WiFi actief: ${SSID} (gateway ${AP_IP})."
+echo "${SSID}" > "${MM_KIOSK_STATE_DIR}/setup-ssid"

@@ -3,7 +3,9 @@
 Lichte Linux-kiosk voor **Raspberry Pi** en **Intel mini-PC/stick** met:
 
 - automatische **setup-WiFi** als er geen internet is;
+- **QR-code op het scherm** zolang het kazernescherm nog niet is gekoppeld;
 - **webpagina** om WiFi en kazernescherm-URL in te stellen;
+- **factory reset** via de webinterface;
 - **Chromium kioskmodus** voor het MeldingsMonitor kazernescherm.
 
 ## Vereisten (apparaat)
@@ -46,13 +48,15 @@ Tijdens installatie moet het apparaat **internet** hebben (via ethernet of al we
 
 ## Eerste configuratie
 
+Zolang het kazernescherm nog niet is gekoppeld, toont het scherm een **QR-code** met de setup-link. Scan die met je telefoon om WiFi en de kazernescherm-URL in te stellen.
+
 Na **Opslaan en starten** herstart het apparaat automatisch en opent het kazernescherm in fullscreen (geen handmatige actie nodig).
 
 ### Scenario A: geen internet (typisch bij nieuwe stick)
 
-1. Het apparaat maakt een WiFi-netwerk: **`MeldingsMonitor-Setup-XXXX`**
-2. Verbind met je telefoon/laptop.
-3. Open **`http://192.168.4.1`**
+1. Het scherm toont een QR-code; het apparaat maakt ook WiFi-netwerk **`MeldingsMonitor-Setup-XXXX`**
+2. Scan de QR-code, of verbind handmatig met het setup-netwerk
+3. Open de setup-link (standaard **`http://192.168.4.1`**)
 4. Scan WiFi → kies netwerk → voer wachtwoord in → **WiFi koppelen**
 5. Plak de kazernescherm-link uit MeldingsMonitor
 6. Klik **Opslaan en starten**
@@ -63,6 +67,8 @@ Na **Opslaan en starten** herstart het apparaat automatisch en opent het kazerne
 2. Stel URL in en klik **Opslaan en starten**
 
 ## Setup opnieuw openen
+
+Via de webinterface onder **Geavanceerd → Factory reset**, of handmatig:
 
 ```bash
 sudo python3 - <<'PY'
@@ -105,8 +111,8 @@ Bestand: `/etc/meldingsmonitor-kiosk/config.json`
 ```
 mm-kiosk.service
     └── mm-kiosk-boot.sh
-            ├── geen internet / setup nodig → setup AP + webapp (poort 80)
-            └── online + setup klaar      → Chromium kiosk
+            ├── setup nodig → setup AP (optioneel) + webapp + QR-scherm
+            └── klaar       → webapp (achtergrond) + Chromium kiosk
 ```
 
 ## Energie en scherm (24/7)
@@ -123,7 +129,7 @@ Script: `scripts/mm-kiosk-power-settings.sh` (draait bij installatie en elke kio
 
 - WiFi-scan stopt tijdelijk het setup-access-point (telefoon kan verbinding verliezen).
 - WiFi-koppeling werkt via **NetworkManager** (`nmcli`); andere netwerkstacks worden niet ondersteund.
-- Geen MeldingsMonitor-cloudkoppeling yet (fase 2).
+- De instellingenpagina op poort 80 is bereikbaar op het lokale netwerk (zonder wachtwoord).
 
 ## Ontwikkeling
 

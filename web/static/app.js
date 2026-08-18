@@ -5,8 +5,10 @@ const scanBtn = document.getElementById('scan-btn');
 const homepageInput = document.getElementById('homepage');
 const saveBtn = document.getElementById('save-btn');
 const finishBtn = document.getElementById('finish-btn');
+const resetBtn = document.getElementById('reset-btn');
 const wifiFeedback = document.getElementById('wifi-feedback');
 const configFeedback = document.getElementById('config-feedback');
+const resetFeedback = document.getElementById('reset-feedback');
 const statusOnline = document.getElementById('status-online');
 const statusSetup = document.getElementById('status-setup');
 const setupSsid = document.getElementById('setup-ssid');
@@ -110,10 +112,36 @@ async function saveConfig(complete = false) {
     }
 }
 
+async function factoryReset() {
+    const confirmed = window.confirm(
+        'Weet je het zeker? WiFi-profielen en kazernescherm-instellingen worden gewist. Het apparaat herstart daarna automatisch.',
+    );
+
+    if (!confirmed) {
+        return;
+    }
+
+    resetBtn.disabled = true;
+    resetFeedback.hidden = true;
+
+    try {
+        await fetchJson('/api/factory-reset', {
+            method: 'POST',
+            body: JSON.stringify({ confirm: true }),
+        });
+
+        showFeedback(resetFeedback, 'Factory reset gestart. Apparaat herstart...', 'success');
+    } catch (error) {
+        showFeedback(resetFeedback, error.message, 'error');
+        resetBtn.disabled = false;
+    }
+}
+
 wifiBtn.addEventListener('click', connectWifi);
 scanBtn.addEventListener('click', scanWifi);
 saveBtn.addEventListener('click', () => saveConfig(false));
 finishBtn.addEventListener('click', () => saveConfig(true));
+resetBtn.addEventListener('click', factoryReset);
 
 loadStatus().then(scanWifi).catch((error) => {
     showFeedback(configFeedback, error.message, 'error');

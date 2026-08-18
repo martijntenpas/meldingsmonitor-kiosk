@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Launches Chromium in kiosk mode for the configured kazernescherm URL.
+# Shows the setup QR page fullscreen until the kazernescherm is configured.
 
 set -euo pipefail
 
@@ -9,31 +9,12 @@ source "${SCRIPT_DIR}/lib/common.sh"
 
 require_root
 
-if [[ ! -f "${MM_KIOSK_CONFIG}" ]]; then
-    log "Config ontbreekt: ${MM_KIOSK_CONFIG}"
-    exit 1
-fi
-
-HOMEPAGE="$(json_value homepage 2>/dev/null || true)"
-if [[ -z "${HOMEPAGE}" ]]; then
-    log "Geen homepage geconfigureerd."
-    exit 1
-fi
-
-if ! python3 - <<PY
-import sys
-sys.path.insert(0, "${SCRIPT_DIR}/../web")
-from kiosk_config import is_homepage_configured
-sys.exit(0 if is_homepage_configured("""${HOMEPAGE}""") else 1)
-PY
-then
-    log "Kazernescherm-URL is nog niet geldig geconfigureerd."
-    exit 1
-fi
+WEB_PORT="$(json_value web_port 2>/dev/null || echo "80")"
+SETUP_URL="http://127.0.0.1:${WEB_PORT}/display"
 
 CHROMIUM="$(detect_chromium_binary || true)"
 if [[ -z "${CHROMIUM}" ]]; then
-    log "Chromium/Chrome niet gevonden."
+    log "Chromium/Chrome niet gevonden voor setup-scherm."
     exit 1
 fi
 
@@ -47,7 +28,7 @@ for _ in $(seq 1 45); do
     sleep 1
 done
 
-log "Kiosk starten voor ${HOMEPAGE} als ${KIOSK_USER}."
+log "Setup-scherm starten op ${SETUP_URL}."
 
 if command -v xset >/dev/null 2>&1; then
     sudo -u "${KIOSK_USER}" DISPLAY="${DISPLAY}" xset s off || true
@@ -68,8 +49,8 @@ while true; do
         --disable-features=TranslateUI \
         --autoplay-policy=no-user-gesture-required \
         --check-for-update-interval=31536000 \
-        "${HOMEPAGE}"
+        "${SETUP_URL}"
 
-    log "Browser afgesloten; over 5 seconden opnieuw starten."
+    log "Setup-scherm afgesloten; over 5 seconden opnieuw starten."
     sleep 5
 done

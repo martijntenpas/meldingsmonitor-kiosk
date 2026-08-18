@@ -4,7 +4,6 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-WEB_DIR="${SCRIPT_DIR}/../web"
 # shellcheck source=lib/common.sh
 source "${SCRIPT_DIR}/lib/common.sh"
 
@@ -17,43 +16,41 @@ if [[ ! -f "${MM_KIOSK_CONFIG}" ]]; then
     log "Standaardconfig aangemaakt op ${MM_KIOSK_CONFIG}."
 fi
 
-SETUP_COMPLETED="$(json_value setup_completed 2>/dev/null || echo "false")"
-FORCE_SETUP="$(json_value force_setup 2>/dev/null || echo "false")"
-WEB_PORT="$(json_value web_port 2>/dev/null || echo "80")"
-
 ONLINE=0
 if "${SCRIPT_DIR}/mm-kiosk-network-check.sh"; then
     ONLINE=1
 fi
 
 NEEDS_SETUP=0
-if [[ "${FORCE_SETUP}" == "true" || "${SETUP_COMPLETED}" != "true" ]]; then
-    NEEDS_SETUP=1
-fi
+if ! python3 - <<PY
+import json
+import sys
 
-if [[ "${NEEDS_SETUP}" -eq 0 && "${ONLINE}" -eq 0 ]]; then
-    log "Geen internet terwijl setup afgerond is; setup-modus opnieuw openen."
+sys.path.insert(0, "${SCRIPT_DIR}/../web")
+from kiosk_config import is_setup_needed
+
+with open("${MM_KIOSK_CONFIG}", encoding="utf-8") as handle:
+    config = json.load(handle)
+
+sys.exit(0 if is_setup_needed(config, online=bool(${ONLINE})) else 1)
+PY
+then
     NEEDS_SETUP=1
 fi
 
 if [[ "${NEEDS_SETUP}" -eq 1 ]]; then
     log "Setup-modus actief."
 
-    if ! "${SCRIPT_DIR}/mm-kiosk-network-check.sh"; then
+    if [[ "${ONLINE}" -eq 0 ]]; then
         "${SCRIPT_DIR}/mm-kiosk-setup-ap.sh" || log "Kon setup access point niet starten."
     fi
 
-    export MM_KIOSK_CONFIG
-    export MM_KIOSK_SCRIPTS="${SCRIPT_DIR}"
-
-    PYTHON="${WEB_DIR}/.venv/bin/python"
-    if [[ ! -x "${PYTHON}" ]]; then
-        PYTHON="python3"
-    fi
-
-    exec "${PYTHON}" "${WEB_DIR}/app.py" --host 0.0.0.0 --port "${WEB_PORT}"
+    "${SCRIPT_DIR}/mm-kiosk-start-provisioning.sh"
+    "${SCRIPT_DIR}/mm-kiosk-power-settings.sh" || true
+    exec "${SCRIPT_DIR}/mm-kiosk-start-setup-display.sh"
 fi
 
 log "Online; kiosk-modus starten."
+"${SCRIPT_DIR}/mm-kiosk-start-provisioning.sh"
 "${SCRIPT_DIR}/mm-kiosk-power-settings.sh" || true
 exec "${SCRIPT_DIR}/mm-kiosk-start-kiosk.sh"
