@@ -125,3 +125,49 @@ wait_for_provisioning_server() {
 
     return 1
 }
+
+detect_desktop_user() {
+    local conf user
+
+    for conf in /etc/lightdm/lightdm.conf.d/*.conf /etc/lightdm/lightdm.conf; do
+        [[ -f "${conf}" ]] || continue
+        user="$(grep -E '^autologin-user=' "${conf}" 2>/dev/null | tail -1 | cut -d= -f2- | tr -d ' ')"
+        if [[ -n "${user}" ]] && id "${user}" >/dev/null 2>&1; then
+            echo "${user}"
+            return 0
+        fi
+    done
+
+    for conf in /etc/lightdm/lightdm.conf.d/*.disabled-by-mm-kiosk; do
+        [[ -f "${conf}" ]] || continue
+        user="$(grep -E '^autologin-user=' "${conf}" 2>/dev/null | tail -1 | cut -d= -f2- | tr -d ' ')"
+        if [[ -n "${user}" ]] && id "${user}" >/dev/null 2>&1; then
+            echo "${user}"
+            return 0
+        fi
+    done
+
+    if id kiosk >/dev/null 2>&1; then
+        echo "kiosk"
+        return 0
+    fi
+
+    return 1
+}
+
+update_mm_kiosk_user() {
+    local kiosk_user="$1"
+    local target_dir="${2:-/opt/meldingsmonitor-kiosk}"
+
+    mkdir -p /etc/systemd/system/mm-kiosk.service.d
+    cat > /etc/systemd/system/mm-kiosk.service.d/override.conf <<EOF
+[Service]
+Environment=MM_KIOSK_USER=${kiosk_user}
+Environment=MM_KIOSK_CONFIG=/etc/meldingsmonitor-kiosk/config.json
+Environment=MM_KIOSK_SCRIPTS=${target_dir}/scripts
+ExecStart=
+ExecStart=${target_dir}/scripts/mm-kiosk-boot.sh
+EOF
+
+    systemctl daemon-reload
+}

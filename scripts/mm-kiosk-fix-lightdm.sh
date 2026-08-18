@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Zorgt dat lightdm automatisch inlogt als kiosk-gebruiker met openbox.
+# Zorgt dat lightdm openbox start voor de bestaande desktop-gebruiker (bijv. martijn).
 
 set -euo pipefail
 
@@ -9,20 +9,23 @@ source "${SCRIPT_DIR}/lib/common.sh"
 
 require_root
 
-KIOSK_USER="${MM_KIOSK_USER:-kiosk}"
+TARGET_DIR="${SCRIPT_DIR}/.."
+DESKTOP_USER="$(detect_desktop_user || true)"
 
-if ! id "${KIOSK_USER}" >/dev/null 2>&1; then
-    useradd -m -s /bin/bash "${KIOSK_USER}"
-    log "Gebruiker ${KIOSK_USER} aangemaakt."
+if [[ -z "${DESKTOP_USER}" ]]; then
+    DESKTOP_USER="${MM_KIOSK_USER:-kiosk}"
+    useradd -m -s /bin/bash "${DESKTOP_USER}" 2>/dev/null || true
 fi
 
-usermod -aG video,render,input,tty "${KIOSK_USER}" 2>/dev/null || true
+log "Desktop-gebruiker voor kiosk: ${DESKTOP_USER}"
+
+usermod -aG video,render,input,tty "${DESKTOP_USER}" 2>/dev/null || true
 
 mkdir -p /etc/lightdm/lightdm.conf.d
 
 for conf in /etc/lightdm/lightdm.conf.d/*.conf; do
     [[ -f "${conf}" ]] || continue
-    [[ "${conf}" == */99-mm-kiosk.conf ]] && continue
+    [[ "${conf}" == */zz-mm-kiosk.conf ]] && continue
     [[ "${conf}" == *.disabled-by-mm-kiosk ]] && continue
 
     log "Lightdm-config uitgeschakeld: ${conf}"
@@ -30,57 +33,62 @@ for conf in /etc/lightdm/lightdm.conf.d/*.conf; do
 done
 
 if [[ -f /etc/lightdm/lightdm.conf ]]; then
-    if grep -qE '^autologin-user=|^autologin-session=' /etc/lightdm/lightdm.conf 2>/dev/null; then
+    if grep -qE 'autologin-user=|autologin-session=|^user-session=' /etc/lightdm/lightdm.conf 2>/dev/null; then
         cp /etc/lightdm/lightdm.conf "/etc/lightdm/lightdm.conf.backup-by-mm-kiosk.$(date +%s)"
         sed -i '/^autologin-user=/d; /^autologin-session=/d; /^user-session=/d' /etc/lightdm/lightdm.conf
         log "Autologin-regels verwijderd uit /etc/lightdm/lightdm.conf."
     fi
 fi
 
-cat > /etc/lightdm/lightdm.conf.d/99-mm-kiosk.conf <<EOF
+cat > /etc/lightdm/lightdm.conf.d/zz-mm-kiosk.conf <<EOF
 [Seat:*]
-autologin-user=${KIOSK_USER}
+autologin-user=${DESKTOP_USER}
 autologin-session=openbox
 user-session=openbox
 autologin-user-timeout=0
 greeter-hide-users=true
+
+[Seat:seat0]
+autologin-user=${DESKTOP_USER}
+autologin-session=openbox
+user-session=openbox
+autologin-user-timeout=0
 EOF
 
-if [[ -f "/var/lib/AccountsService/users/${KIOSK_USER}" ]]; then
-    sed -i '/^XSession=/d' "/var/lib/AccountsService/users/${KIOSK_USER}" || true
+USER_ACCOUNTS_FILE="/var/lib/AccountsService/users/${DESKTOP_USER}"
+mkdir -p /var/lib/AccountsService/users
+if [[ -f "${USER_ACCOUNTS_FILE}" ]]; then
+    if grep -q '^\[User\]' "${USER_ACCOUNTS_FILE}"; then
+        sed -i '/^XSession=/d' "${USER_ACCOUNTS_FILE}" || true
+        sed -i "/^\[User\]/a XSession=openbox" "${USER_ACCOUNTS_FILE}"
+    else
+        printf '[User]\nXSession=openbox\n' >> "${USER_ACCOUNTS_FILE}"
+    fi
+else
+    cat > "${USER_ACCOUNTS_FILE}" <<EOF
+[User]
+XSession=openbox
+SystemAccount=false
+EOF
 fi
 
-for user_conf in /var/lib/AccountsService/users/*; do
-    [[ -f "${user_conf}" ]] || continue
-    username="$(basename "${user_conf}")"
-    [[ "${username}" == "${KIOSK_USER}" ]] && continue
-
-    if grep -q '^XSession=' "${user_conf}" 2>/dev/null; then
-        sed -i '/^XSession=/d' "${user_conf}" || true
-        log "XSession verwijderd voor ${username} in AccountsService."
-    fi
-done
-
-"${SCRIPT_DIR}/mm-kiosk-configure-openbox-autostart.sh"
+MM_KIOSK_USER="${DESKTOP_USER}" "${SCRIPT_DIR}/mm-kiosk-configure-openbox-autostart.sh"
+"${SCRIPT_DIR}/mm-kiosk-install-desktop-autostart.sh" "${DESKTOP_USER}"
+update_mm_kiosk_user "${DESKTOP_USER}" "${TARGET_DIR}"
 
 echo "/usr/sbin/lightdm" > /etc/X11/default-display-manager
 systemctl enable lightdm.service
 
-log "lightdm herstarten met autologin voor ${KIOSK_USER}."
+log "lightdm herstarten: ${DESKTOP_USER} met openbox-sessie."
 systemctl restart lightdm.service
 
-sleep 3
+sleep 4
 
-if sudo -u "${KIOSK_USER}" DISPLAY=:0 xdpyinfo >/dev/null 2>&1; then
-    log "Autologin OK: X11 beschikbaar voor ${KIOSK_USER}."
+if sudo -u "${DESKTOP_USER}" DISPLAY=:0 xdpyinfo >/dev/null 2>&1; then
+    log "Openbox/X11 actief voor ${DESKTOP_USER}."
+    systemctl restart mm-kiosk.service 2>/dev/null || true
     exit 0
 fi
 
-log "Autologin voor ${KIOSK_USER} nog niet actief; fallback voor bestaande desktop-sessie."
-ACTIVE_USER="$(who | awk 'NR==1 {print $1}')"
-if [[ -n "${ACTIVE_USER}" && "${ACTIVE_USER}" != "${KIOSK_USER}" ]]; then
-    "${SCRIPT_DIR}/mm-kiosk-install-desktop-autostart.sh" "${ACTIVE_USER}"
-    log "Browser-autostart geinstalleerd voor ${ACTIVE_USER}."
-fi
-
+log "Openbox nog niet actief; desktop-autostart voor ${DESKTOP_USER} staat klaar als fallback."
 exit 0

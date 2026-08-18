@@ -35,4 +35,4 @@ if [[ -n "${KIOSK_HOME}" ]]; then
     chown -R "${KIOSK_USER}:${KIOSK_USER}" "${KIOSK_HOME}/.config"
 fi
 
-log "Openbox-autostart geconfigureerd voor Chromium."
+log "Openbox-autostart geconfigureerd voor ${KIOSK_USER}."

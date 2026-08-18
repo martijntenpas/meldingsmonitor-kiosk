@@ -85,12 +85,10 @@ journalctl -u lightdm.service -n 10 --no-pager 2>/dev/null || true
 echo
 
 if ! sudo -u "${KIOSK_USER}" DISPLAY="${DISPLAY}" xdpyinfo >/dev/null 2>&1; then
-    echo "Aanbevolen fix:"
-    echo "  sudo bash ${SCRIPT_DIR}/mm-kiosk-fix-lightdm.sh"
-    echo "  sudo reboot"
-    echo
-    echo "Of fallback voor huidige desktop-gebruiker:"
-    echo "  sudo bash ${SCRIPT_DIR}/mm-kiosk-install-desktop-autostart.sh martijn"
+    echo "Aanbevolen fix (Pi OS houdt vaak martijn als gebruiker):"
+    echo "  cd ~/meldingsmonitor-kiosk"
+    echo "  git pull"
+    echo "  sudo bash scripts/mm-kiosk-apply-screen.sh"
     echo "  sudo reboot"
 fi
 
