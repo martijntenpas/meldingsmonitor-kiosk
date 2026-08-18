@@ -6,17 +6,34 @@ Lichte Linux-kiosk voor **Raspberry Pi** en **Intel mini-PC/stick** met:
 - **webpagina** om WiFi en kazernescherm-URL in te stellen;
 - **Chromium kioskmodus** voor het MeldingsMonitor kazernescherm.
 
-## Vereisten
+## Vereisten (apparaat)
 
-- Debian 12+, Ubuntu 22.04+, of **Raspberry Pi OS Lite** (64-bit aanbevolen)
-- NetworkManager (`nmcli`)
-- WiFi of ethernet
-- Minimaal 2 GB RAM
+Zorg vóór installatie dat het apparaat aan deze basis voldoet:
+
+- **Besturingssysteem:** Debian 12+, Ubuntu 22.04+, of **Raspberry Pi OS Lite** (64-bit aanbevolen)
+- **Netwerk:** WiFi of ethernet (internet tijdens installatie voor pakketten)
+- **Geheugen:** minimaal 2 GB RAM
+- **Toegang:** root/sudo op het apparaat
+
+Je hoeft **geen** extra software handmatig te installeren — `scripts/install.sh` regelt dat.
+
+## Wat `install.sh` automatisch installeert
+
+Het installatiescript zet alles klaar wat de kiosk nodig heeft:
+
+| Onderdeel | Pakket / actie |
+| --- | --- |
+| WiFi-beheer | `network-manager` (inclusief `nmcli`) |
+| Browser | `chromium` / `chromium-browser` |
+| Desktop voor kiosk | `xorg`, `openbox`, `lightdm`, `unclutter`, `x11-xserver-utils` |
+| Setup-WiFi (access point) | `hostapd`, `dnsmasq` |
+| Provisioning-webapp | `python3`, `python3-venv`, Flask (in venv) |
+| Overig | `curl`, systemd-service, kiosk-gebruiker, autologin, energie-/scherminstellingen |
 
 ## Installatie
 
 1. Flash Raspberry Pi OS Lite of installeer Debian/Ubuntu op de Intel stick.
-2. Clone de **publieke kiosk-repository** op het apparaat (of kopieer deze map via USB).
+2. Clone deze repository op het apparaat (of kopieer de map via USB).
 
 ```bash
 git clone https://github.com/martijntenpas/meldingsmonitor-kiosk.git
@@ -25,8 +42,7 @@ sudo bash scripts/install.sh
 sudo reboot
 ```
 
-> Deze software wordt vanuit de private MeldingsMonitor-monorepo gespiegeld naar een publieke repo.
-> Zie [PUBLISHING.md](PUBLISHING.md) voor onderhouders.
+Tijdens installatie moet het apparaat **internet** hebben (via ethernet of al werkende WiFi) zodat `apt` de pakketten kan ophalen.
 
 ## Eerste configuratie
 
@@ -106,8 +122,7 @@ Script: `scripts/mm-kiosk-power-settings.sh` (draait bij installatie en elke kio
 ## Bekende beperkingen (v1)
 
 - WiFi-scan stopt tijdelijk het setup-access-point (telefoon kan verbinding verliezen).
-- Vereist **NetworkManager** voor WiFi-koppeling.
-- X11 + Openbox + Lightdm autologin worden geïnstalleerd voor Chromium.
+- WiFi-koppeling werkt via **NetworkManager** (`nmcli`); andere netwerkstacks worden niet ondersteund.
 - Geen MeldingsMonitor-cloudkoppeling yet (fase 2).
 
 ## Ontwikkeling
@@ -129,3 +144,7 @@ sudo MM_KIOSK_CONFIG=../config/config.example.json \
 ```bash
 python3 -m pytest tests
 ```
+
+## Voor onderhouders
+
+Deze publieke repository is een mirror van `tools/station-screen-kiosk` in de private MeldingsMonitor-monorepo. Instructies voor synchroniseren staan in [PUBLISHING.md](PUBLISHING.md).
