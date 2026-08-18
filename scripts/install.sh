@@ -120,6 +120,7 @@ systemctl daemon-reload
 systemctl enable mm-kiosk-web.service
 systemctl enable mm-kiosk.service
 systemctl enable lightdm.service 2>/dev/null || true
+systemctl set-default graphical.target 2>/dev/null || true
 
 "${TARGET_DIR}/scripts/mm-kiosk-power-settings.sh"
 

@@ -38,14 +38,21 @@ if [[ -z "${CHROMIUM}" ]]; then
 fi
 
 export DISPLAY="${DISPLAY:-:0}"
-KIOSK_USER="${MM_KIOSK_USER:-$(logname 2>/dev/null || echo kiosk)}"
+KIOSK_USER="${MM_KIOSK_USER:-kiosk}"
 
-for _ in $(seq 1 45); do
+display_ready=0
+for _ in $(seq 1 60); do
     if sudo -u "${KIOSK_USER}" DISPLAY="${DISPLAY}" xdpyinfo >/dev/null 2>&1; then
+        display_ready=1
         break
     fi
     sleep 1
 done
+
+if [[ "${display_ready}" -eq 0 ]]; then
+    log "Geen grafische sessie op ${DISPLAY} voor ${KIOSK_USER}. Controleer lightdm (sudo bash ${SCRIPT_DIR}/mm-kiosk-diagnose.sh)."
+    exit 1
+fi
 
 log "Kiosk starten voor ${HOMEPAGE} als ${KIOSK_USER}."
 
