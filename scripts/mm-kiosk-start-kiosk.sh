@@ -28,7 +28,7 @@ sys.exit(0 if is_homepage_configured("""${HOMEPAGE}""") else 1)
 PY
 then
     log "Kazernescherm-URL is nog niet geldig geconfigureerd."
-    exit 1
+    exec "${SCRIPT_DIR}/mm-kiosk-start-setup-display.sh"
 fi
 
 CHROMIUM="$(detect_chromium_binary || true)"

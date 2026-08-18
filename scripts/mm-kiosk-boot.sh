@@ -22,7 +22,7 @@ if "${SCRIPT_DIR}/mm-kiosk-network-check.sh"; then
 fi
 
 NEEDS_SETUP=0
-if ! python3 - <<PY
+if python3 - <<PY
 import json
 import sys
 
