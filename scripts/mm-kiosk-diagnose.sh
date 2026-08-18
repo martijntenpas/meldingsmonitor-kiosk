@@ -67,12 +67,31 @@ echo "-- Laatste kiosk-logregels --"
 tail -15 "${MM_KIOSK_LOG}" 2>/dev/null || echo "Geen log gevonden."
 echo
 
-if ! systemctl is-active lightdm.service >/dev/null 2>&1; then
+echo "-- Grafische pakketten --"
+for pkg in xserver-xorg openbox lightdm chromium-browser chromium; do
+    if dpkg-query -W -f='${Status}' "${pkg}" 2>/dev/null | grep -q "install ok installed"; then
+        echo "${pkg}: geinstalleerd"
+    fi
+done
+echo "Display manager: $(cat /etc/X11/default-display-manager 2>/dev/null || echo onbekend)"
+echo "Beschikbare sessies:"
+ls -1 /usr/share/xsessions/ 2>/dev/null || echo "  geen xsessions gevonden"
+echo
+
+echo "-- lightdm-log --"
+journalctl -u lightdm.service -n 10 --no-pager 2>/dev/null || true
+echo
+
+if ! sudo -u "${KIOSK_USER}" DISPLAY="${DISPLAY}" xdpyinfo >/dev/null 2>&1; then
     echo "Aanbevolen fix:"
-    echo "  sudo systemctl enable lightdm mm-kiosk mm-kiosk-web"
-    echo "  sudo systemctl set-default graphical.target"
+    echo "  sudo bash ${SCRIPT_DIR}/mm-kiosk-fix-display.sh"
     echo "  sudo reboot"
     echo
-    echo "Als lightdm nog ontbreekt, voer de volledige installatie uit:"
+    echo "Sync daarna /opt met de repo:"
+    echo "  cd ~/meldingsmonitor-kiosk && sudo bash scripts/mm-kiosk-update.sh"
+fi
+
+if ! systemctl is-active lightdm.service >/dev/null 2>&1; then
+    echo "lightdm is niet actief. Voer installatie of fix-display uit:"
     echo "  cd ~/meldingsmonitor-kiosk && sudo bash scripts/install.sh"
 fi

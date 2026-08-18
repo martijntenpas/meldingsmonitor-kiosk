@@ -90,7 +90,11 @@ cat > /etc/lightdm/lightdm.conf.d/50-mm-kiosk.conf <<EOF
 [Seat:*]
 autologin-user=${KIOSK_USER}
 autologin-session=openbox
+user-session=openbox
+autologin-user-timeout=0
 EOF
+
+echo "/usr/sbin/lightdm" > /etc/X11/default-display-manager
 
 cat > /etc/xdg/openbox/autostart <<EOF
 #!/bin/sh
