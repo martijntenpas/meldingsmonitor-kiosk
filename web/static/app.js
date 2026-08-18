@@ -1,3 +1,5 @@
+const wifiSection = document.getElementById('wifi-section');
+const setupLead = document.getElementById('setup-lead');
 const wifiSelect = document.getElementById('wifi-ssid');
 const wifiPassword = document.getElementById('wifi-password');
 const wifiBtn = document.getElementById('wifi-btn');
@@ -20,13 +22,19 @@ function showFeedback(element, message, type = 'success') {
 }
 
 async function fetchJson(url, options = {}) {
-    const response = await fetch(url, {
-        headers: {
-            'Content-Type': 'application/json',
-            Accept: 'application/json',
-        },
-        ...options,
-    });
+    let response;
+
+    try {
+        response = await fetch(url, {
+            headers: {
+                'Content-Type': 'application/json',
+                Accept: 'application/json',
+            },
+            ...options,
+        });
+    } catch (error) {
+        throw new Error('Kan de instellingenpagina niet bereiken. Controleer of het apparaat online is en herlaad de pagina.');
+    }
 
     const data = await response.json().catch(() => ({}));
 
@@ -37,15 +45,32 @@ async function fetchJson(url, options = {}) {
     return data;
 }
 
+function setWifiSectionVisible(visible) {
+    if (!wifiSection) {
+        return;
+    }
+
+    wifiSection.hidden = !visible;
+
+    if (setupLead) {
+        setupLead.textContent = visible
+            ? 'Koppel WiFi en plak de kazernescherm-link. Daarna start het scherm automatisch.'
+            : 'Plak de kazernescherm-link. Dit apparaat gebruikt ethernet; WiFi is niet beschikbaar.';
+    }
+}
+
 async function loadStatus() {
     const data = await fetchJson('/api/status');
     statusOnline.textContent = data.online ? 'Verbonden' : 'Geen verbinding';
     statusSetup.textContent = data.setup_completed ? 'Afgerond' : 'Nog instellen';
     setupSsid.textContent = data.setup_ap_ip ? `MeldingsMonitor-Setup (via ${data.setup_ap_ip})` : 'MeldingsMonitor-Setup';
+    setWifiSectionVisible(Boolean(data.wifi_available));
 
     if (data.homepage) {
         homepageInput.value = data.homepage;
     }
+
+    return data;
 }
 
 async function scanWifi() {
@@ -143,6 +168,14 @@ saveBtn.addEventListener('click', () => saveConfig(false));
 finishBtn.addEventListener('click', () => saveConfig(true));
 resetBtn.addEventListener('click', factoryReset);
 
-loadStatus().then(scanWifi).catch((error) => {
-    showFeedback(configFeedback, error.message, 'error');
-});
+loadStatus()
+    .then((data) => {
+        if (data.wifi_available) {
+            return scanWifi();
+        }
+
+        return undefined;
+    })
+    .catch((error) => {
+        showFeedback(configFeedback, error.message, 'error');
+    });

@@ -46,7 +46,7 @@ def save_config(data: dict) -> None:
         handle.write("\n")
 
 
-def run_script(name: str, *args: str) -> subprocess.CompletedProcess[str]:
+def run_script(name: str, *args: str, timeout: int = 30) -> subprocess.CompletedProcess[str]:
     script = SCRIPTS_DIR / name
     if not script.exists():
         raise FileNotFoundError(f"Script ontbreekt: {script}")
@@ -56,7 +56,12 @@ def run_script(name: str, *args: str) -> subprocess.CompletedProcess[str]:
         capture_output=True,
         text=True,
         check=False,
+        timeout=timeout,
     )
+
+
+def wifi_available() -> bool:
+    return run_script("mm-kiosk-wifi-available.sh", timeout=5).returncode == 0
 
 
 def ap_is_active() -> bool:
@@ -104,6 +109,7 @@ def provisioning_context() -> dict:
         "setup_url": setup_url,
         "setup_ap_active": ap_active,
         "setup_ssid": read_setup_ssid(),
+        "wifi_available": wifi_available(),
         "homepage_configured": is_homepage_configured(config.get("homepage")),
         "setup_needed": is_setup_needed(config, online=online),
     }
@@ -144,6 +150,7 @@ def status():
             "setup_url": context["setup_url"],
             "setup_ap_active": context["setup_ap_active"],
             "setup_ssid": context["setup_ssid"],
+            "wifi_available": context["wifi_available"],
         }
     )
 
@@ -178,7 +185,7 @@ def update_config():
 
     if mark_complete:
         if not run_script("mm-kiosk-network-check.sh").returncode == 0:
-            return jsonify({"ok": False, "message": "Geen internetverbinding. Koppel eerst WiFi."}), 422
+            return jsonify({"ok": False, "message": "Geen internetverbinding. Controleer ethernet of koppel WiFi."}), 422
         config["setup_completed"] = True
         config["force_setup"] = False
 
@@ -189,7 +196,13 @@ def update_config():
 
 @app.get("/api/wifi/scan")
 def wifi_scan():
-    result = run_script("mm-kiosk-wifi-scan.sh")
+    if not wifi_available():
+        return jsonify({"networks": [], "wifi_available": False})
+
+    try:
+        result = run_script("mm-kiosk-wifi-scan.sh", timeout=20)
+    except subprocess.TimeoutExpired:
+        return jsonify({"networks": [], "message": "WiFi-scan duurde te lang.", "wifi_available": True}), 200
 
     if result.returncode != 0:
         return jsonify({"networks": [], "message": result.stderr.strip()}), 200
@@ -199,7 +212,7 @@ def wifi_scan():
     except json.JSONDecodeError:
         networks = []
 
-    return jsonify({"networks": networks})
+    return jsonify({"networks": networks, "wifi_available": True})
 
 
 @app.post("/api/wifi/connect")

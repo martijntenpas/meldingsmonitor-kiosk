@@ -66,6 +66,8 @@ Na **Opslaan en starten** herstart het apparaat automatisch en opent het kazerne
 1. Open op het apparaat of via het netwerk: **`http://<ip-van-apparaat>`**
 2. Stel URL in en klik **Opslaan en starten**
 
+Apparaten **zonder WiFi** (alleen ethernet) slaan WiFi-instellingen automatisch over. De WiFi-sectie wordt dan verborgen.
+
 ## Setup opnieuw openen
 
 Via de webinterface onder **Geavanceerd → Factory reset**, of handmatig:

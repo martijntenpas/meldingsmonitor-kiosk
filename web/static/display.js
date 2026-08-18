@@ -11,7 +11,11 @@ async function refreshDisplay() {
     if (data.setup_ap_active && data.setup_ssid) {
         stepWifi.textContent = `Verbind met WiFi-netwerk ${data.setup_ssid} als je nog geen internet hebt.`;
     } else if (data.online) {
-        stepWifi.textContent = 'Dit apparaat heeft internet. Scan de QR-code om verder te gaan.';
+        stepWifi.textContent = data.wifi_available
+            ? 'Dit apparaat heeft internet. Scan de QR-code om verder te gaan.'
+            : 'Dit apparaat heeft internet via ethernet. Open de setup-link op een andere computer in hetzelfde netwerk.';
+    } else if (!data.wifi_available) {
+        stepWifi.textContent = 'Geen internet. Controleer de ethernetkabel of open de setup-link via een andere computer in het netwerk.';
     }
 
     setupQr.src = `/api/qr.svg?t=${Date.now()}`;
