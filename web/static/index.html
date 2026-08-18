@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>MeldingsMonitor kiosk instellen</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <main class="shell">
+        <header class="hero">
+            <p class="eyebrow">MeldingsMonitor</p>
+            <h1>Kazernescherm instellen</h1>
+            <p class="lead">Koppel WiFi en plak de kazernescherm-link. Daarna start het scherm automatisch.</p>
+        </header>
+
+        <section class="card" id="status-card">
+            <h2>Status</h2>
+            <dl class="status-grid">
+                <div>
+                    <dt>Internet</dt>
+                    <dd id="status-online">Laden...</dd>
+                </div>
+                <div>
+                    <dt>Setup</dt>
+                    <dd id="status-setup">Laden...</dd>
+                </div>
+            </dl>
+        </section>
+
+        <section class="card">
+            <div class="card-head">
+                <h2>WiFi</h2>
+                <button type="button" class="btn secondary" id="scan-btn">Opnieuw scannen</button>
+            </div>
+            <p class="hint">Geen internet? Verbind je telefoon met het setup-netwerk <strong id="setup-ssid">MeldingsMonitor-Setup</strong>.</p>
+
+            <label class="field">
+                <span>Netwerk</span>
+                <select id="wifi-ssid">
+                    <option value="">Scannen...</option>
+                </select>
+            </label>
+
+            <label class="field">
+                <span>WiFi-wachtwoord</span>
+                <input id="wifi-password" type="password" autocomplete="off" placeholder="Laat leeg voor open netwerk">
+            </label>
+
+            <button type="button" class="btn" id="wifi-btn">WiFi koppelen</button>
+            <p class="feedback" id="wifi-feedback" hidden></p>
+        </section>
+
+        <section class="card">
+            <h2>Kazernescherm</h2>
+            <label class="field">
+                <span>Toegangslink</span>
+                <input id="homepage" type="url" placeholder="https://meldingsmonitor.nl/kazernescherm/...">
+            </label>
+            <p class="hint">Kopieer de link uit MeldingsMonitor via Kazerneschermen → link kopiëren.</p>
+
+            <div class="actions">
+                <button type="button" class="btn secondary" id="save-btn">Alleen opslaan</button>
+                <button type="button" class="btn" id="finish-btn">Opslaan en starten</button>
+            </div>
+            <p class="feedback" id="config-feedback" hidden></p>
+        </section>
+    </main>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>

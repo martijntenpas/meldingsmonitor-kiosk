@@ -1,0 +1,10 @@
+{
+    "homepage": "https://meldingsmonitor.nl/kazernescherm/VUL_ACCESS_KEY_IN",
+    "setup_completed": false,
+    "check_url": "https://meldingsmonitor.nl/up",
+    "setup_ssid_prefix": "MeldingsMonitor-Setup",
+    "setup_ap_ip": "192.168.4.1",
+    "setup_ap_cidr": "192.168.4.0/24",
+    "web_port": 80,
+    "force_setup": false
+}

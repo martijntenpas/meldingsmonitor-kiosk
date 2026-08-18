@@ -1,0 +1,15 @@
+[Unit]
+Description=MeldingsMonitor kazernescherm kiosk
+After=network-online.target NetworkManager.service graphical.target lightdm.service
+Wants=network-online.target graphical.target
+
+[Service]
+Type=simple
+Environment=MM_KIOSK_CONFIG=/etc/meldingsmonitor-kiosk/config.json
+Environment=MM_KIOSK_SCRIPTS=/opt/meldingsmonitor-kiosk/scripts
+ExecStart=/opt/meldingsmonitor-kiosk/scripts/mm-kiosk-boot.sh
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
