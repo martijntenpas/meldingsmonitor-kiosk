@@ -47,6 +47,7 @@ fi
 systemctl daemon-reload
 systemctl enable mm-kiosk-web.service >/dev/null 2>&1 || true
 systemctl restart mm-kiosk-web.service
+sleep 2
 systemctl restart mm-kiosk.service
 
 echo

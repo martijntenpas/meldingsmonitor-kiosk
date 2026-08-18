@@ -18,16 +18,29 @@ if [[ ! -f /etc/systemd/system/mm-kiosk-web.service ]]; then
 fi
 
 systemctl enable mm-kiosk-web.service >/dev/null 2>&1 || true
+
+if wait_for_provisioning_server "${WEB_PORT}"; then
+    log "Provisioning-server draait al."
+    exit 0
+fi
+
+log "Provisioning-server starten via systemd."
+systemctl start mm-kiosk-web.service
+
+if wait_for_provisioning_server "${WEB_PORT}"; then
+    log "Provisioning-server bereikbaar."
+    exit 0
+fi
+
+log "Provisioning-server niet bereikbaar; probeer opnieuw te starten."
 systemctl restart mm-kiosk-web.service
 
-for _ in $(seq 1 20); do
-    if curl -fsS "http://127.0.0.1:${WEB_PORT}/api/health" >/dev/null 2>&1; then
-        log "Provisioning-server bereikbaar via systemd."
-        exit 0
-    fi
-    sleep 0.5
-done
+if wait_for_provisioning_server "${WEB_PORT}"; then
+    log "Provisioning-server bereikbaar na herstart."
+    exit 0
+fi
 
-log "Provisioning-server gestart, maar healthcheck mislukt."
+log "Provisioning-server start mislukt."
 systemctl --no-pager --full status mm-kiosk-web.service || true
+journalctl -u mm-kiosk-web.service -n 20 --no-pager || true
 exit 1

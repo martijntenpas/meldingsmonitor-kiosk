@@ -45,12 +45,20 @@ if [[ "${NEEDS_SETUP}" -eq 1 ]]; then
         "${SCRIPT_DIR}/mm-kiosk-setup-ap.sh" || log "Kon setup access point niet starten."
     fi
 
-    "${SCRIPT_DIR}/mm-kiosk-start-provisioning.sh"
+    WEB_PORT="$(json_value web_port 2>/dev/null || echo "80")"
+    if ! wait_for_provisioning_server "${WEB_PORT}"; then
+        log "Provisioning-server nog niet bereikbaar; setup-scherm toch starten."
+    fi
+
     "${SCRIPT_DIR}/mm-kiosk-power-settings.sh" || true
     exec "${SCRIPT_DIR}/mm-kiosk-start-setup-display.sh"
 fi
 
 log "Online; kiosk-modus starten."
-"${SCRIPT_DIR}/mm-kiosk-start-provisioning.sh"
+WEB_PORT="$(json_value web_port 2>/dev/null || echo "80")"
+if ! wait_for_provisioning_server "${WEB_PORT}"; then
+    log "Provisioning-server nog niet bereikbaar; kiosk toch starten."
+fi
+
 "${SCRIPT_DIR}/mm-kiosk-power-settings.sh" || true
 exec "${SCRIPT_DIR}/mm-kiosk-start-kiosk.sh"
