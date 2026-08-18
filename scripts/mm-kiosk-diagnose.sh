@@ -39,6 +39,8 @@ if pgrep -f chromium >/dev/null 2>&1; then
 else
     echo "Chromium: niet gevonden"
 fi
+
+echo "Ingelogde gebruiker op scherm: $(who | awk 'NR==1 {print $1}')"
 echo
 
 echo "-- Configuratie --"

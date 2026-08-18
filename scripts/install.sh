@@ -96,16 +96,7 @@ EOF
 
 echo "/usr/sbin/lightdm" > /etc/X11/default-display-manager
 
-cat > /etc/xdg/openbox/autostart <<EOF
-#!/bin/sh
-# mm-kiosk power settings
-xset s off
-xset s noblank
-xset -dpms
-xset dpms 0 0 0
-unclutter -idle 0 &
-EOF
-chmod 0755 /etc/xdg/openbox/autostart
+"${TARGET_DIR}/scripts/mm-kiosk-configure-openbox-autostart.sh"
 
 install -m 0644 "${TARGET_DIR}/systemd/mm-kiosk.service" /etc/systemd/system/mm-kiosk.service
 install -m 0644 "${TARGET_DIR}/systemd/mm-kiosk-web.service" /etc/systemd/system/mm-kiosk-web.service

@@ -37,6 +37,18 @@ fi
 usermod -aG video,render,input,tty "${KIOSK_USER}" 2>/dev/null || true
 
 mkdir -p /etc/lightdm/lightdm.conf.d
+
+for conf in /etc/lightdm/lightdm.conf.d/*.conf; do
+    [[ -f "${conf}" ]] || continue
+    [[ "${conf}" == */50-mm-kiosk.conf ]] && continue
+    [[ "${conf}" == *.disabled-by-mm-kiosk ]] && continue
+
+    if grep -qE 'autologin-(user|session)|^user-session=' "${conf}" 2>/dev/null; then
+        log "Conflicterende lightdm-config uitgeschakeld: ${conf}"
+        mv "${conf}" "${conf}.disabled-by-mm-kiosk"
+    fi
+done
+
 cat > /etc/lightdm/lightdm.conf.d/50-mm-kiosk.conf <<EOF
 [Seat:*]
 autologin-user=${KIOSK_USER}
@@ -45,16 +57,7 @@ user-session=openbox
 autologin-user-timeout=0
 EOF
 
-mkdir -p /etc/xdg/openbox
-cat > /etc/xdg/openbox/autostart <<'EOF'
-#!/bin/sh
-xset s off
-xset s noblank
-xset -dpms
-xset dpms 0 0 0
-unclutter -idle 0 &
-EOF
-chmod 0755 /etc/xdg/openbox/autostart
+"${SCRIPT_DIR}/mm-kiosk-configure-openbox-autostart.sh"
 
 if [[ -f /usr/share/xsessions/openbox.desktop ]]; then
     log "Openbox-sessie gevonden."

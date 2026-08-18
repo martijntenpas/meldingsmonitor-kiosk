@@ -51,14 +51,16 @@ if [[ "${NEEDS_SETUP}" -eq 1 ]]; then
     fi
 
     "${SCRIPT_DIR}/mm-kiosk-power-settings.sh" || true
-    exec "${SCRIPT_DIR}/mm-kiosk-start-setup-display.sh"
+    log "Setup-modus: browser start via openbox-autostart."
+    exec tail -F "${MM_KIOSK_LOG}"
 fi
 
-log "Online; kiosk-modus starten."
+log "Online; kiosk-modus actief."
 WEB_PORT="$(json_value web_port 2>/dev/null || echo "80")"
 if ! wait_for_provisioning_server "${WEB_PORT}"; then
-    log "Provisioning-server nog niet bereikbaar; kiosk toch starten."
+    log "Provisioning-server nog niet bereikbaar."
 fi
 
 "${SCRIPT_DIR}/mm-kiosk-power-settings.sh" || true
-exec "${SCRIPT_DIR}/mm-kiosk-start-kiosk.sh"
+log "Kiosk-modus: browser start via openbox-autostart."
+exec tail -F "${MM_KIOSK_LOG}"
