@@ -55,4 +55,5 @@ if [[ "${NEEDS_SETUP}" -eq 1 ]]; then
 fi
 
 log "Online; kiosk-modus starten."
+"${SCRIPT_DIR}/mm-kiosk-power-settings.sh" || true
 exec "${SCRIPT_DIR}/mm-kiosk-start-kiosk.sh"

@@ -94,9 +94,11 @@ EOF
 
 cat > /etc/xdg/openbox/autostart <<EOF
 #!/bin/sh
+# mm-kiosk power settings
 xset s off
-xset -dpms
 xset s noblank
+xset -dpms
+xset dpms 0 0 0
 unclutter -idle 0 &
 EOF
 chmod 0755 /etc/xdg/openbox/autostart
@@ -115,6 +117,9 @@ EOF
 
 systemctl daemon-reload
 systemctl enable mm-kiosk.service
+systemctl enable lightdm.service 2>/dev/null || true
+
+"${TARGET_DIR}/scripts/mm-kiosk-power-settings.sh"
 
 echo
 echo "Installatie afgerond."

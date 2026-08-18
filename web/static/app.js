@@ -96,7 +96,7 @@ async function saveConfig(complete = false) {
         });
 
         if (complete) {
-            showFeedback(configFeedback, 'Opgeslagen. Apparaat start opnieuw...', 'success');
+            showFeedback(configFeedback, 'Opgeslagen. Apparaat herstart en opent het kazernescherm automatisch...', 'success');
             await fetchJson('/api/reboot', { method: 'POST' });
             return;
         }

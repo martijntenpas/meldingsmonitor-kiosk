@@ -30,6 +30,8 @@ sudo reboot
 
 ## Eerste configuratie
 
+Na **Opslaan en starten** herstart het apparaat automatisch en opent het kazernescherm in fullscreen (geen handmatige actie nodig).
+
 ### Scenario A: geen internet (typisch bij nieuwe stick)
 
 1. Het apparaat maakt een WiFi-netwerk: **`MeldingsMonitor-Setup-XXXX`**
@@ -90,6 +92,16 @@ mm-kiosk.service
             ├── geen internet / setup nodig → setup AP + webapp (poort 80)
             └── online + setup klaar      → Chromium kiosk
 ```
+
+## Energie en scherm (24/7)
+
+De installer schakelt automatisch uit:
+
+- schermbeveiliging / blanking (X11 + console)
+- DPMS (monitor uitschakelen)
+- slaapstand, suspend en hibernate (systemd)
+
+Script: `scripts/mm-kiosk-power-settings.sh` (draait bij installatie en elke kiosk-start).
 
 ## Bekende beperkingen (v1)
 

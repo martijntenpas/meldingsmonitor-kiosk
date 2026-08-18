@@ -39,18 +39,22 @@ done
 log "Kiosk starten voor ${HOMEPAGE} als ${KIOSK_USER}."
 
 if command -v xset >/dev/null 2>&1; then
-    sudo -u "${KIOSK_USER}" xset s off || true
-    sudo -u "${KIOSK_USER}" xset -dpms || true
-    sudo -u "${KIOSK_USER}" xset s noblank || true
+    sudo -u "${KIOSK_USER}" DISPLAY="${DISPLAY}" xset s off || true
+    sudo -u "${KIOSK_USER}" DISPLAY="${DISPLAY}" xset s noblank || true
+    sudo -u "${KIOSK_USER}" DISPLAY="${DISPLAY}" xset -dpms || true
+    sudo -u "${KIOSK_USER}" DISPLAY="${DISPLAY}" xset dpms 0 0 0 || true
 fi
 
 while true; do
-    sudo -u "${KIOSK_USER}" "${CHROMIUM}" \
+    sudo -u "${KIOSK_USER}" DISPLAY="${DISPLAY}" "${CHROMIUM}" \
         --kiosk \
+        --no-first-run \
+        --no-default-browser-check \
         --noerrdialogs \
         --disable-infobars \
         --disable-session-crashed-bubble \
         --disable-restore-session-state \
+        --disable-features=TranslateUI \
         --autoplay-policy=no-user-gesture-required \
         --check-for-update-interval=31536000 \
         "${HOMEPAGE}"
