@@ -21,6 +21,8 @@ if [[ ! -d "${TARGET_DIR}" ]]; then
     exit 1
 fi
 
+bash "${SOURCE_DIR}/scripts/mm-kiosk-ensure-packages.sh"
+
 rsync -a --delete \
     --exclude '.venv' \
     "${SOURCE_DIR}/config/" "${TARGET_DIR}/config/"

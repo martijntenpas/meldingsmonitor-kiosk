@@ -36,14 +36,10 @@ BASE_PACKAGES=(
     python3
     python3-pip
     python3-venv
-    unclutter
 )
 
-if is_pi_desktop; then
-    BASE_PACKAGES+=(wtype fonts-noto-color-emoji fonts-font-awesome)
-fi
-
 apt-get install -y "${BASE_PACKAGES[@]}"
+"${SCRIPT_DIR}/mm-kiosk-ensure-packages.sh"
 
 if is_pi_desktop; then
     echo "==> Raspberry Pi OS Desktop gedetecteerd: bestaande desktop blijft actief"

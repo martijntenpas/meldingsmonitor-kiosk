@@ -145,11 +145,28 @@ WiFi hoef je niet in te stellen.
 | --- | --- |
 | WiFi-beheer | `network-manager` (inclusief `nmcli`) |
 | Browser | `chromium` / `chromium-browser` |
-| Pi Desktop | bestaande desktop + autostart, `wtype`, `unclutter` |
+| Pi Desktop | bestaande desktop + autostart, cursor-hide (`unclutter`, `wtype`), emoji/icon-fonts |
 | Pi Lite | `xorg`, `openbox`, `lightdm`, `unclutter`, `feh` |
 | Setup-WiFi (access point) | `hostapd`, `dnsmasq` |
 | Provisioning-webapp | `python3`, `python3-venv`, Flask (in venv) |
 | Overig | `curl`, systemd-service, bureaubladachtergrond, energie-instellingen |
+
+### Pi Desktop — extra pakketten (automatisch)
+
+Bij **Pi OS Desktop** installeert `install.sh` (en updates via `mm-kiosk-update.sh`) ook:
+
+| Pakket | Doel |
+| --- | --- |
+| `unclutter` | muiscursor verbergen |
+| `wtype` | cursor verbergen op Wayland/labwc |
+| `fonts-noto-color-emoji` | emoji-fallback op het bureaublad |
+| `fonts-font-awesome` | icon-font fallback |
+
+Je hoeft deze pakketten **niet handmatig** te installeren na een schone setup.
+
+### Iconen op het kazernescherm
+
+Widget-iconen op **meldingsmonitor.nl** zijn **inline SVG** (geen Font Awesome CDN). Zorg dat productie up-to-date is met de laatste MeldingsMonitor-release. De fontpakketten op de Pi zijn alleen een fallback voor overige content.
 
 ---
 
