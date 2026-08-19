@@ -176,10 +176,11 @@ select {
 
 .display-body {
     overflow: hidden;
-    cursor: none;
+    cursor: none !important;
 }
 
-.display-body * {
+.display-body *,
+.display-body *:hover {
     cursor: none !important;
 }
 

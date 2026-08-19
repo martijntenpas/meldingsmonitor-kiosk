@@ -8,6 +8,10 @@ CONFIG="${MM_KIOSK_CONFIG:-/etc/meldingsmonitor-kiosk/config.json}"
 WEB_DIR="${KIOSK_ROOT}/web"
 LOG_FILE="${MM_KIOSK_BROWSER_LOG:-/var/log/mm-kiosk-browser.log}"
 RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
+SCRIPT_DIR="${KIOSK_ROOT}/scripts"
+
+# shellcheck source=lib/common.sh
+source "${SCRIPT_DIR}/lib/common.sh"
 
 exec >> "${LOG_FILE}" 2>&1
 
@@ -26,7 +30,10 @@ fi
 export GNOME_KEYRING_CONTROL=""
 export SECRET_SERVICE_BUS_NAME=""
 
-if [[ -S "${RUNTIME_DIR}/wayland-0" ]]; then
+if is_pi_desktop; then
+    export DISPLAY=:0
+    log_line "Pi Desktop: Chromium via X11 op ${DISPLAY}."
+elif [[ -S "${RUNTIME_DIR}/wayland-0" ]]; then
     export WAYLAND_DISPLAY="${WAYLAND_DISPLAY:-wayland-0}"
     unset DISPLAY
     log_line "Wayland-sessie gedetecteerd (${WAYLAND_DISPLAY})."
@@ -116,7 +123,9 @@ while true; do
         --use-mock-keychain
     )
 
-    if [[ -n "${WAYLAND_DISPLAY:-}" ]]; then
+    if is_pi_desktop; then
+        CHROMIUM_ARGS+=(--ozone-platform=x11)
+    elif [[ -n "${WAYLAND_DISPLAY:-}" ]]; then
         CHROMIUM_ARGS+=(--ozone-platform=wayland)
     fi
 
