@@ -11,24 +11,32 @@
         <header class="display-hero">
             <p class="eyebrow">MeldingsMonitor</p>
             <h1>Kazernescherm instellen</h1>
-            <p class="lead">Scan de QR-code om WiFi en het kazernescherm te configureren.</p>
+            <p class="lead">Scan de QR-code of open de link hieronder op je telefoon of computer.</p>
+            <p class="display-status" id="display-status">Status laden...</p>
         </header>
 
         <section class="display-card">
             <div class="qr-frame">
                 <img id="setup-qr" src="/api/qr.svg" alt="QR-code voor kiosk-instellingen">
             </div>
+            <p class="display-label">Setup-link (zonder QR-code):</p>
             <p class="display-url" id="setup-url">Laden...</p>
+            <p class="display-hint" id="display-hint">Werkt de QR-code niet? Typ de link hierboven handmatig in je browser.</p>
         </section>
 
         <section class="display-steps card">
             <h2>Zo werkt het</h2>
             <ol>
                 <li id="step-wifi">Verbind met het setup-WiFi-netwerk als je nog geen internet hebt.</li>
-                <li>Scan de QR-code of open de link op je telefoon.</li>
-                <li>Koppel WiFi en plak de kazernescherm-link.</li>
-                <li>Klik op <strong>Opslaan en starten</strong>.</li>
+                <li>Scan de QR-code of open de setup-link op je telefoon of computer in hetzelfde netwerk.</li>
+                <li>Plak de kazernescherm-link van MeldingsMonitor (begint met https://meldingsmonitor.nl/kazernescherm/).</li>
+                <li>Klik op <strong>Opslaan en starten</strong>. Dit scherm toont daarna automatisch het kazernescherm.</li>
             </ol>
+        </section>
+
+        <section class="display-steps card" id="homepage-section" hidden>
+            <h2>Kazernescherm</h2>
+            <p id="homepage-status">Het kazernescherm is ingesteld en wordt geladen...</p>
         </section>
     </main>
 
