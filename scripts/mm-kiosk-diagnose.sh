@@ -85,9 +85,11 @@ journalctl -u lightdm.service -n 10 --no-pager 2>/dev/null || true
 echo
 
 if ! sudo -u "${KIOSK_USER}" DISPLAY="${DISPLAY}" xdpyinfo >/dev/null 2>&1; then
-    echo "Aanbevolen fix (Pi OS houdt vaak martijn als gebruiker):"
-    echo "  cd ~/meldingsmonitor-kiosk"
-    echo "  git pull"
+    PRIMARY="$(cat /etc/meldingsmonitor-kiosk/primary-user 2>/dev/null || echo onbekend)"
+    echo "Primaire scherm-gebruiker: ${PRIMARY}"
+    echo
+    echo "Aanbevolen fix:"
+    echo "  cd ~/meldingsmonitor-kiosk && git pull"
     echo "  sudo bash scripts/mm-kiosk-apply-screen.sh"
     echo "  sudo reboot"
 fi

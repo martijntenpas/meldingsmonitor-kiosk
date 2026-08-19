@@ -147,8 +147,42 @@ detect_desktop_user() {
         fi
     done
 
-    if id kiosk >/dev/null 2>&1; then
-        echo "kiosk"
+    detect_primary_user
+}
+
+detect_primary_user() {
+    local user
+
+    if [[ -n "${SUDO_USER:-}" ]] && id "${SUDO_USER}" >/dev/null 2>&1; then
+        echo "${SUDO_USER}"
+        return 0
+    fi
+
+    user="$(logname 2>/dev/null || true)"
+    if [[ -n "${user}" ]] && id "${user}" >/dev/null 2>&1; then
+        echo "${user}"
+        return 0
+    fi
+
+    user="$(getent passwd | awk -F: '$3 >= 1000 && $3 < 65534 { print $1; exit }')"
+    if [[ -n "${user}" ]]; then
+        echo "${user}"
+        return 0
+    fi
+
+    return 1
+}
+
+is_pi_desktop() {
+    if dpkg-query -W -f='${Status}' raspberrypi-ui-mods 2>/dev/null | grep -q "install ok installed"; then
+        return 0
+    fi
+
+    if dpkg-query -W -f='${Status}' rpi-chromium-mods 2>/dev/null | grep -q "install ok installed"; then
+        return 0
+    fi
+
+    if command -v labwc >/dev/null 2>&1; then
         return 0
     fi
 

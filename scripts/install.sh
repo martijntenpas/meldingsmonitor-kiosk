@@ -3,56 +3,86 @@
 
 set -euo pipefail
 
-require_root() {
-    if [[ "${EUID}" -ne 0 ]]; then
-        echo "Voer dit installatiescript uit als root (sudo)." >&2
-        exit 1
-    fi
-}
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=lib/common.sh
+source "${SCRIPT_DIR}/lib/common.sh"
 
 require_root
 
-SOURCE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+SOURCE_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 TARGET_DIR="/opt/meldingsmonitor-kiosk"
 CONFIG_DIR="/etc/meldingsmonitor-kiosk"
-KIOSK_USER="${MM_KIOSK_USER:-kiosk}"
+PRIMARY_USER="$(detect_primary_user || true)"
+
+if [[ -z "${PRIMARY_USER}" ]]; then
+    echo "Geen gebruikersaccount gevonden. Maak eerst een gebruiker aan in Raspberry Pi Imager." >&2
+    exit 1
+fi
 
 echo "==> MeldingsMonitor kiosk installer"
 echo "    Bron: ${SOURCE_DIR}"
 echo "    Doel: ${TARGET_DIR}"
+echo "    Scherm-gebruiker: ${PRIMARY_USER}"
 
 echo "==> Systeempakketten installeren"
 export DEBIAN_FRONTEND=noninteractive
 apt-get update
-apt-get install -y \
-    curl \
-    dnsmasq \
-    hostapd \
-    network-manager \
-    python3 \
-    python3-pip \
-    python3-venv \
-    xorg \
-    openbox \
-    lightdm \
-    unclutter \
-    x11-xserver-utils
+
+BASE_PACKAGES=(
+    curl
+    dnsmasq
+    hostapd
+    network-manager
+    python3
+    python3-pip
+    python3-venv
+    unclutter
+)
+
+apt-get install -y "${BASE_PACKAGES[@]}"
+
+if is_pi_desktop; then
+    echo "==> Raspberry Pi OS Desktop gedetecteerd: bestaande desktop blijft actief"
+else
+    echo "==> Lite/headless gedetecteerd: minimale grafische omgeving installeren"
+    apt-get install -y xserver-xorg x11-xserver-utils openbox lightdm
+    systemctl enable lightdm.service 2>/dev/null || true
+    systemctl set-default graphical.target 2>/dev/null || true
+
+    mkdir -p /etc/lightdm/lightdm.conf.d
+    cat > /etc/lightdm/lightdm.conf.d/zz-mm-kiosk.conf <<EOF
+[Seat:*]
+autologin-user=${PRIMARY_USER}
+autologin-session=openbox
+user-session=openbox
+autologin-user-timeout=0
+EOF
+
+    echo "/usr/sbin/lightdm" > /etc/X11/default-display-manager
+
+    mkdir -p /etc/xdg/openbox
+    cat > /etc/xdg/openbox/autostart <<'EOF'
+#!/bin/sh
+xset s off
+xset s noblank
+xset -dpms
+xset dpms 0 0 0
+unclutter -idle 0 &
+EOF
+    chmod 0755 /etc/xdg/openbox/autostart
+fi
 
 if grep -qi raspberry /proc/device-tree/model 2>/dev/null; then
-    apt-get install -y chromium-browser || apt-get install -y chromium
+    apt-get install -y chromium-browser 2>/dev/null || apt-get install -y chromium
 else
-    apt-get install -y chromium || apt-get install -y chromium-browser
+    apt-get install -y chromium 2>/dev/null || apt-get install -y chromium-browser
 fi
 
 systemctl disable --now hostapd.service 2>/dev/null || true
 systemctl disable --now dnsmasq.service 2>/dev/null || true
-systemctl enable NetworkManager.service
+systemctl enable NetworkManager.service 2>/dev/null || true
 
-if ! id "${KIOSK_USER}" >/dev/null 2>&1; then
-    useradd -m -s /bin/bash "${KIOSK_USER}"
-fi
-
-usermod -aG video,render,input "${KIOSK_USER}" || true
+usermod -aG video,render,input,tty "${PRIMARY_USER}" 2>/dev/null || true
 
 echo "==> Bestanden kopiëren"
 install -d "${TARGET_DIR}"
@@ -85,49 +115,23 @@ exec ${TARGET_DIR}/web/.venv/bin/python ${TARGET_DIR}/web/app.py "\$@"
 EOF
 chmod 0755 /usr/local/bin/mm-kiosk-provision
 
-mkdir -p /etc/lightdm/lightdm.conf.d
-cat > /etc/lightdm/lightdm.conf.d/50-mm-kiosk.conf <<EOF
-[Seat:*]
-autologin-user=${KIOSK_USER}
-autologin-session=openbox
-user-session=openbox
-autologin-user-timeout=0
-EOF
+echo "==> Opstartsequence voor ${PRIMARY_USER}"
+"${TARGET_DIR}/scripts/mm-kiosk-setup-user-session.sh" "${PRIMARY_USER}"
 
-echo "/usr/sbin/lightdm" > /etc/X11/default-display-manager
-
-"${TARGET_DIR}/scripts/mm-kiosk-configure-openbox-autostart.sh"
-
-install -m 0644 "${TARGET_DIR}/systemd/mm-kiosk.service" /etc/systemd/system/mm-kiosk.service
 install -m 0644 "${TARGET_DIR}/systemd/mm-kiosk-web.service" /etc/systemd/system/mm-kiosk-web.service
-
-mkdir -p /etc/systemd/system/mm-kiosk.service.d
-cat > /etc/systemd/system/mm-kiosk.service.d/override.conf <<EOF
-[Service]
-Environment=MM_KIOSK_USER=${KIOSK_USER}
-Environment=MM_KIOSK_CONFIG=${CONFIG_DIR}/config.json
-Environment=MM_KIOSK_SCRIPTS=${TARGET_DIR}/scripts
-ExecStart=
-ExecStart=${TARGET_DIR}/scripts/mm-kiosk-boot.sh
-EOF
 
 systemctl daemon-reload
 systemctl enable mm-kiosk-web.service
-systemctl enable mm-kiosk.service
-systemctl enable lightdm.service 2>/dev/null || true
-systemctl set-default graphical.target 2>/dev/null || true
+systemctl restart mm-kiosk-web.service
 
-"${TARGET_DIR}/scripts/mm-kiosk-power-settings.sh"
+"${TARGET_DIR}/scripts/mm-kiosk-power-settings.sh" || true
 
 echo
 echo "Installatie afgerond."
 echo
 echo "Volgende stappen:"
-echo "  1. Herstart het apparaat: sudo reboot"
-echo "  2. Geen internet? Verbind met WiFi-netwerk MeldingsMonitor-Setup-XXXX"
-echo "  3. Open http://192.168.4.1 in je browser"
-echo "  4. Koppel WiFi en plak de kazernescherm-link"
+echo "  1. Herstart: sudo reboot"
+echo "  2. HDMI toont daarna setup-QR of kazernescherm (via gebruiker ${PRIMARY_USER})"
+echo "  3. Instellen via http://$(hostname -I | awk '{print $1}') of:"
+echo "     sudo bash ${TARGET_DIR}/scripts/mm-kiosk-set-homepage.sh \"JOUW_URL\" complete"
 echo
-echo "Setup opnieuw openen:"
-echo "  sudo sed -i 's/\"force_setup\": false/\"force_setup\": true/' ${CONFIG_DIR}/config.json"
-echo "  sudo systemctl restart mm-kiosk"

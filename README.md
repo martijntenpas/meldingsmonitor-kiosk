@@ -34,8 +34,9 @@ Het installatiescript zet alles klaar wat de kiosk nodig heeft:
 
 ## Installatie
 
-1. Flash Raspberry Pi OS Lite of installeer Debian/Ubuntu op de Intel stick.
-2. Clone deze repository op het apparaat (of kopieer de map via USB).
+1. Flash **Raspberry Pi OS Lite (64-bit)** of Desktop — beide werken.
+2. Log in via SSH als je gebruiker (bijv. `martijn`).
+3. Clone en installeer:
 
 ```bash
 git clone https://github.com/martijntenpas/meldingsmonitor-kiosk.git
@@ -44,7 +45,9 @@ sudo bash scripts/install.sh
 sudo reboot
 ```
 
-Tijdens installatie moet het apparaat **internet** hebben (via ethernet of al werkende WiFi) zodat `apt` de pakketten kan ophalen.
+`install.sh` detecteert automatisch je gebruiker en zet een **opstartsequence** klaar die na login/boot Chromium in kioskmodus opent. Geen aparte `kiosk`-gebruiker nodig.
+
+Tijdens installatie moet het apparaat **internet** hebben (via ethernet of WiFi) zodat `apt` de pakketten kan ophalen.
 
 ## Eerste configuratie
 
@@ -132,10 +135,9 @@ Bestand: `/etc/meldingsmonitor-kiosk/config.json`
 ## Architectuur
 
 ```
-mm-kiosk.service
-    └── mm-kiosk-boot.sh
-            ├── setup nodig → setup AP (optioneel) + webapp + QR-scherm
-            └── klaar       → webapp (achtergrond) + Chromium kiosk
+mm-kiosk-web.service          → instellingenpagina (poort 80)
+gebruiker@autostart           → Chromium kiosk op HDMI na boot/login
+  └── mm-kiosk-launch-browser.sh
 ```
 
 ## Energie en scherm (24/7)
