@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Stelt het MeldingsMonitor bureaubladachtergrond in voor Pi desktop en Lite.
+# Stelt het MeldingsMonitor bureaubladachtergrond permanent in (eenmalig bij installatie).
 
 set -euo pipefail
 
@@ -25,13 +25,14 @@ if [[ ! -f "${SOURCE_WALLPAPER}" ]]; then
 fi
 
 USER_HOME="$(getent passwd "${TARGET_USER}" | cut -d: -f6)"
-USER_ID="$(id -u "${TARGET_USER}")"
-USER_WALLPAPER="${USER_HOME}/.local/share/meldingsmonitor/wallpaper.png"
+WALLPAPER_PATH="${SYSTEM_WALLPAPER}"
 
-install -d "${USER_HOME}/.local/share/meldingsmonitor"
 install -d /usr/share/meldingsmonitor-kiosk
-install -m 0644 "${SOURCE_WALLPAPER}" "${USER_WALLPAPER}"
 install -m 0644 "${SOURCE_WALLPAPER}" "${SYSTEM_WALLPAPER}"
+
+if [[ -d /usr/share/rpd-wallpaper ]]; then
+    install -m 0644 "${SOURCE_WALLPAPER}" /usr/share/rpd-wallpaper/meldingsmonitor.png
+fi
 
 if command -v update-alternatives >/dev/null 2>&1; then
     update-alternatives --install /etc/alternatives/desktop-background desktop-background "${SYSTEM_WALLPAPER}" 100 2>/dev/null || true
@@ -45,7 +46,7 @@ configure_pcmanfm_profile() {
 [*]
 wallpaper_mode=crop
 wallpaper_common=1
-wallpaper=${USER_WALLPAPER}
+wallpaper=${WALLPAPER_PATH}
 desktop_bg=#0c1018
 show_wm_menu=0
 show_trash=0
@@ -57,7 +58,7 @@ EOF
 [desktop]
 wallpaper_mode=crop
 wallpaper_common=1
-wallpaper=${USER_WALLPAPER}
+wallpaper=${WALLPAPER_PATH}
 desktop_bg=#0c1018
 EOF
 }
@@ -66,60 +67,57 @@ for profile in LXDE-pi LXDE default; do
     configure_pcmanfm_profile "${USER_HOME}/.config/pcmanfm/${profile}"
 done
 
+if [[ -d /etc/xdg/pcmanfm ]]; then
+    for profile_dir in /etc/xdg/pcmanfm/*/; do
+        [[ -d "${profile_dir}" ]] || continue
+        configure_pcmanfm_profile "${profile_dir%/}"
+    done
+fi
+
+configure_labwc_background() {
+    local rc_file="$1"
+    [[ -f "${rc_file}" ]] || return
+
+    if grep -q '<background>' "${rc_file}"; then
+        sed -i "s|<file>.*</file>|<file>${WALLPAPER_PATH}</file>|g" "${rc_file}"
+    else
+        sed -i "0,/<openbox_config[^>]*>/s|<openbox_config\\([^>]*\\)>|<openbox_config\\1>\\n  <background>\\n    <image>\\n      <file>${WALLPAPER_PATH}</file>\\n      <mode>fill</mode>\\n    </image>\\n  </background>|" "${rc_file}"
+    fi
+}
+
 if is_pi_desktop && command -v labwc >/dev/null 2>&1; then
     LABWC_DIR="${USER_HOME}/.config/labwc"
     RC_FILE="${LABWC_DIR}/rc.xml"
-    AUTOSTART_DIR="${LABWC_DIR}/autostart"
 
-    mkdir -p "${LABWC_DIR}" "${AUTOSTART_DIR}"
+    mkdir -p "${LABWC_DIR}"
 
     if [[ ! -f "${RC_FILE}" && -f /etc/xdg/labwc/rc.xml ]]; then
         cp /etc/xdg/labwc/rc.xml "${RC_FILE}"
     fi
 
-    if [[ -f "${RC_FILE}" ]]; then
-        if grep -q '<background>' "${RC_FILE}"; then
-            sed -i "s|<file>.*</file>|<file>${USER_WALLPAPER}</file>|g" "${RC_FILE}"
-        else
-            sed -i "0,/<openbox_config[^>]*>/s|<openbox_config\\([^>]*\\)>|<openbox_config\\1>\\n  <background>\\n    <image>\\n      <file>${USER_WALLPAPER}</file>\\n      <mode>fill</mode>\\n    </image>\\n  </background>|" "${RC_FILE}"
-        fi
+    configure_labwc_background "${RC_FILE}"
+
+    if [[ -f /etc/xdg/labwc/rc.xml ]]; then
+        configure_labwc_background /etc/xdg/labwc/rc.xml
     fi
 
-    PREPARE_SCRIPT="${TARGET_DIR}/scripts/mm-kiosk-prepare-desktop.sh"
-    cat > "${AUTOSTART_DIR}/00-mm-kiosk-prepare-desktop" <<EOF
-#!/bin/sh
-exec ${PREPARE_SCRIPT}
-EOF
-    chmod 0755 "${AUTOSTART_DIR}/00-mm-kiosk-prepare-desktop"
-
-    rm -f "${AUTOSTART_DIR}/mm-kiosk-wallpaper" "${AUTOSTART_DIR}/mm-kiosk-hide-cursor" 2>/dev/null || true
+    rm -f "${LABWC_DIR}/autostart/00-mm-kiosk-prepare-desktop" \
+        "${LABWC_DIR}/autostart/mm-kiosk-wallpaper" 2>/dev/null || true
 fi
 
 if ! is_pi_desktop; then
     apt-get install -y feh 2>/dev/null || true
 
-    OPENBOX_AUTOSTART="${USER_HOME}/.config/openbox/autostart"
-    mkdir -p "$(dirname "${OPENBOX_AUTOSTART}")"
-
-    if [[ ! -f "${OPENBOX_AUTOSTART}" ]]; then
-        touch "${OPENBOX_AUTOSTART}"
-    fi
-
-    if ! grep -q 'mm-kiosk-prepare-desktop.sh' "${OPENBOX_AUTOSTART}"; then
+    mkdir -p /etc/xdg/openbox
+    OPENBOX_AUTOSTART="/etc/xdg/openbox/autostart"
+    touch "${OPENBOX_AUTOSTART}"
+    if ! grep -q 'meldingsmonitor-kiosk/wallpaper.png' "${OPENBOX_AUTOSTART}"; then
         cat >> "${OPENBOX_AUTOSTART}" <<EOF
-${TARGET_DIR}/scripts/mm-kiosk-prepare-desktop.sh &
+feh --bg-fill "${WALLPAPER_PATH}" &
 EOF
     fi
 fi
 
-chown -R "${TARGET_USER}:${TARGET_USER}" "${USER_HOME}/.config" "${USER_HOME}/.local/share/meldingsmonitor"
+chown -R "${TARGET_USER}:${TARGET_USER}" "${USER_HOME}/.config"
 
-if [[ -d "/run/user/${USER_ID}" ]]; then
-    sudo -u "${TARGET_USER}" \
-        XDG_RUNTIME_DIR="/run/user/${USER_ID}" \
-        WAYLAND_DISPLAY="${WAYLAND_DISPLAY:-wayland-0}" \
-        HOME="${USER_HOME}" \
-        "${TARGET_DIR}/scripts/mm-kiosk-prepare-desktop.sh" || true
-fi
-
-log "Bureaubladachtergrond ingesteld voor ${TARGET_USER}."
+log "Bureaubladachtergrond permanent ingesteld voor ${TARGET_USER}."

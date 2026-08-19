@@ -17,10 +17,10 @@ log_line() {
 
 log_line "Browser-opstart gestart (user=$(whoami), pid=$$)."
 
-PREPARE_DESKTOP="${KIOSK_ROOT}/scripts/mm-kiosk-prepare-desktop.sh"
+PREPARE_DESKTOP="${KIOSK_ROOT}/scripts/mm-kiosk-hide-cursor.sh"
 if [[ -x "${PREPARE_DESKTOP}" ]]; then
     "${PREPARE_DESKTOP}" &
-    log_line "Desktop-voorbereiding gestart (achtergrond + cursor)."
+    log_line "Cursor-hide gestart."
 fi
 
 export GNOME_KEYRING_CONTROL=""

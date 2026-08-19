@@ -35,6 +35,15 @@ bash "${SCRIPT_DIR}/mm-kiosk-disable-keyring.sh" "${PRIMARY_USER}"
 
 if is_pi_desktop; then
     bash "${SCRIPT_DIR}/mm-kiosk-configure-labwc-cursor.sh" "${PRIMARY_USER}"
+
+    LABWC_AUTOSTART="${USER_HOME}/.config/labwc/autostart"
+    mkdir -p "${LABWC_AUTOSTART}"
+    cat > "${LABWC_AUTOSTART}/00-mm-kiosk-hide-cursor" <<EOF
+#!/bin/sh
+exec ${TARGET_DIR}/scripts/mm-kiosk-hide-cursor.sh
+EOF
+    chmod 0755 "${LABWC_AUTOSTART}/00-mm-kiosk-hide-cursor"
+    rm -f "${LABWC_AUTOSTART}/00-mm-kiosk-prepare-desktop" 2>/dev/null || true
 fi
 
 bash "${SCRIPT_DIR}/mm-kiosk-set-wallpaper.sh" "${PRIMARY_USER}"
