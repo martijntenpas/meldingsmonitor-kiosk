@@ -22,9 +22,8 @@ fi
 USER_HOME="$(getent passwd "${TARGET_USER}" | cut -d: -f6)"
 LABWC_DIR="${USER_HOME}/.config/labwc"
 RC_FILE="${LABWC_DIR}/rc.xml"
-AUTOSTART_DIR="${LABWC_DIR}/autostart"
 
-mkdir -p "${LABWC_DIR}" "${AUTOSTART_DIR}"
+mkdir -p "${LABWC_DIR}"
 
 if [[ ! -f "${RC_FILE}" ]]; then
     if [[ -f /etc/xdg/labwc/rc.xml ]]; then
@@ -43,18 +42,6 @@ if ! grep -q 'name="HideCursor"' "${RC_FILE}"; then
     </keybind>' "${RC_FILE}"
 fi
 
-cat > "${AUTOSTART_DIR}/mm-kiosk-hide-cursor" <<'EOF'
-#!/bin/sh
-sleep 4
-if command -v wtype >/dev/null 2>&1; then
-    wtype -M alt -M logo h -m alt -m logo 2>/dev/null || true
-fi
-if command -v unclutter >/dev/null 2>&1; then
-    DISPLAY="${DISPLAY:-:0}" unclutter -idle 0 -root -noevents &
-fi
-EOF
-
-chmod 0755 "${AUTOSTART_DIR}/mm-kiosk-hide-cursor"
 chown -R "${TARGET_USER}:${TARGET_USER}" "${LABWC_DIR}"
 
 log "Labwc cursor-hide geconfigureerd voor ${TARGET_USER}."

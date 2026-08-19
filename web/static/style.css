@@ -176,6 +176,11 @@ select {
 
 .display-body {
     overflow: hidden;
+    cursor: none;
+}
+
+.display-body * {
+    cursor: none !important;
 }
 
 .display-shell {

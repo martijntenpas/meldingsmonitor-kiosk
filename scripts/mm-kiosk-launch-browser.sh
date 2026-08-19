@@ -17,6 +17,12 @@ log_line() {
 
 log_line "Browser-opstart gestart (user=$(whoami), pid=$$)."
 
+PREPARE_DESKTOP="${KIOSK_ROOT}/scripts/mm-kiosk-prepare-desktop.sh"
+if [[ -x "${PREPARE_DESKTOP}" ]]; then
+    "${PREPARE_DESKTOP}" &
+    log_line "Desktop-voorbereiding gestart (achtergrond + cursor)."
+fi
+
 export GNOME_KEYRING_CONTROL=""
 export SECRET_SERVICE_BUS_NAME=""
 
@@ -83,38 +89,6 @@ PY
 )"
 
 log_line "Open URL: ${TARGET_URL}"
-
-start_cursor_hide() {
-    if ! command -v unclutter >/dev/null 2>&1; then
-        log_line "unclutter niet gevonden; cursor blijft zichtbaar."
-        return
-    fi
-
-    if pgrep -f 'unclutter.*-idle' >/dev/null 2>&1; then
-        log_line "unclutter draait al."
-        return
-    fi
-
-    local unclutter_display="${DISPLAY:-:0}"
-    if [[ -n "${WAYLAND_DISPLAY:-}" && -z "${DISPLAY:-}" ]]; then
-        unclutter_display=:0
-    fi
-
-    DISPLAY="${unclutter_display}" unclutter -idle 0 -root -noevents &
-    log_line "Cursor verborgen via unclutter (DISPLAY=${unclutter_display})."
-}
-
-start_cursor_hide
-
-if [[ -n "${WAYLAND_DISPLAY:-}" ]] && command -v wtype >/dev/null 2>&1; then
-    (
-        while true; do
-            sleep 10
-            wtype -M alt -M logo -P h -m alt -m logo 2>/dev/null || true
-        done
-    ) &
-    log_line "Labwc cursor-hide actief via wtype."
-fi
 
 if command -v xset >/dev/null 2>&1 && [[ -n "${DISPLAY:-}" ]]; then
     xset s off || true

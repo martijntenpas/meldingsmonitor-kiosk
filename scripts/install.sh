@@ -124,7 +124,6 @@ chmod 0755 /usr/local/bin/mm-kiosk-provision
 echo "==> Opstartsequence voor ${PRIMARY_USER}"
 "${TARGET_DIR}/scripts/mm-kiosk-disable-keyring.sh" "${PRIMARY_USER}"
 "${TARGET_DIR}/scripts/mm-kiosk-setup-user-session.sh" "${PRIMARY_USER}"
-"${TARGET_DIR}/scripts/mm-kiosk-set-wallpaper.sh" "${PRIMARY_USER}"
 
 install -m 0644 "${TARGET_DIR}/systemd/mm-kiosk-web.service" /etc/systemd/system/mm-kiosk-web.service
 

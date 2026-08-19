@@ -11,6 +11,7 @@ require_root
 
 TARGET_DIR="/opt/meldingsmonitor-kiosk"
 SOURCE_WALLPAPER="${TARGET_DIR}/assets/wallpaper.png"
+SYSTEM_WALLPAPER="/usr/share/meldingsmonitor-kiosk/wallpaper.png"
 TARGET_USER="${1:-$(detect_primary_user || true)}"
 
 if [[ -z "${TARGET_USER}" ]] || ! id "${TARGET_USER}" >/dev/null 2>&1; then
@@ -28,7 +29,14 @@ USER_ID="$(id -u "${TARGET_USER}")"
 USER_WALLPAPER="${USER_HOME}/.local/share/meldingsmonitor/wallpaper.png"
 
 install -d "${USER_HOME}/.local/share/meldingsmonitor"
+install -d /usr/share/meldingsmonitor-kiosk
 install -m 0644 "${SOURCE_WALLPAPER}" "${USER_WALLPAPER}"
+install -m 0644 "${SOURCE_WALLPAPER}" "${SYSTEM_WALLPAPER}"
+
+if command -v update-alternatives >/dev/null 2>&1; then
+    update-alternatives --install /etc/alternatives/desktop-background desktop-background "${SYSTEM_WALLPAPER}" 100 2>/dev/null || true
+    update-alternatives --set desktop-background "${SYSTEM_WALLPAPER}" 2>/dev/null || true
+fi
 
 configure_pcmanfm_profile() {
     local profile_dir="$1"
@@ -44,10 +52,19 @@ show_trash=0
 show_documents=0
 show_mounts=0
 EOF
+
+    cat > "${profile_dir}/pcmanfm.conf" <<EOF
+[desktop]
+wallpaper_mode=crop
+wallpaper_common=1
+wallpaper=${USER_WALLPAPER}
+desktop_bg=#0c1018
+EOF
 }
 
-configure_pcmanfm_profile "${USER_HOME}/.config/pcmanfm/LXDE-pi"
-configure_pcmanfm_profile "${USER_HOME}/.config/pcmanfm/default"
+for profile in LXDE-pi LXDE default; do
+    configure_pcmanfm_profile "${USER_HOME}/.config/pcmanfm/${profile}"
+done
 
 if is_pi_desktop && command -v labwc >/dev/null 2>&1; then
     LABWC_DIR="${USER_HOME}/.config/labwc"
@@ -68,12 +85,14 @@ if is_pi_desktop && command -v labwc >/dev/null 2>&1; then
         fi
     fi
 
-    cat > "${AUTOSTART_DIR}/mm-kiosk-wallpaper" <<EOF
+    PREPARE_SCRIPT="${TARGET_DIR}/scripts/mm-kiosk-prepare-desktop.sh"
+    cat > "${AUTOSTART_DIR}/00-mm-kiosk-prepare-desktop" <<EOF
 #!/bin/sh
-sleep 2
-pcmanfm --set-wallpaper="${USER_WALLPAPER}" --wallpaper-mode=crop 2>/dev/null || true
+exec ${PREPARE_SCRIPT}
 EOF
-    chmod 0755 "${AUTOSTART_DIR}/mm-kiosk-wallpaper"
+    chmod 0755 "${AUTOSTART_DIR}/00-mm-kiosk-prepare-desktop"
+
+    rm -f "${AUTOSTART_DIR}/mm-kiosk-wallpaper" "${AUTOSTART_DIR}/mm-kiosk-hide-cursor" 2>/dev/null || true
 fi
 
 if ! is_pi_desktop; then
@@ -86,9 +105,9 @@ if ! is_pi_desktop; then
         touch "${OPENBOX_AUTOSTART}"
     fi
 
-    if ! grep -q 'meldingsmonitor/wallpaper.png' "${OPENBOX_AUTOSTART}"; then
+    if ! grep -q 'mm-kiosk-prepare-desktop.sh' "${OPENBOX_AUTOSTART}"; then
         cat >> "${OPENBOX_AUTOSTART}" <<EOF
-feh --bg-fill "${USER_WALLPAPER}" &
+${TARGET_DIR}/scripts/mm-kiosk-prepare-desktop.sh &
 EOF
     fi
 fi
@@ -99,7 +118,8 @@ if [[ -d "/run/user/${USER_ID}" ]]; then
     sudo -u "${TARGET_USER}" \
         XDG_RUNTIME_DIR="/run/user/${USER_ID}" \
         WAYLAND_DISPLAY="${WAYLAND_DISPLAY:-wayland-0}" \
-        pcmanfm --set-wallpaper="${USER_WALLPAPER}" --wallpaper-mode=crop 2>/dev/null || true
+        HOME="${USER_HOME}" \
+        "${TARGET_DIR}/scripts/mm-kiosk-prepare-desktop.sh" || true
 fi
 
 log "Bureaubladachtergrond ingesteld voor ${TARGET_USER}."

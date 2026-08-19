@@ -37,13 +37,15 @@ if is_pi_desktop; then
     bash "${SCRIPT_DIR}/mm-kiosk-configure-labwc-cursor.sh" "${PRIMARY_USER}"
 fi
 
+bash "${SCRIPT_DIR}/mm-kiosk-set-wallpaper.sh" "${PRIMARY_USER}"
+
 mkdir -p "${USER_HOME}/.config/autostart" "${USER_HOME}/.config/systemd/user"
 
 cat > "${USER_HOME}/.config/autostart/mm-kiosk-browser.desktop" <<EOF
 [Desktop Entry]
 Type=Application
 Name=MeldingsMonitor Kazernescherm
-Exec=/bin/bash -lc 'sleep 8; exec ${AUTOSTART_WRAPPER}'
+Exec=/bin/bash -lc 'sleep 3; exec ${AUTOSTART_WRAPPER}'
 X-GNOME-Autostart-enabled=true
 Hidden=false
 NoDisplay=false
@@ -58,7 +60,7 @@ Wants=network-online.target
 [Service]
 Type=simple
 Environment=XDG_RUNTIME_DIR=/run/user/${USER_ID}
-ExecStartPre=/bin/sleep 12
+ExecStartPre=/bin/sleep 5
 ExecStart=${AUTOSTART_WRAPPER}
 Restart=always
 RestartSec=5
@@ -72,12 +74,13 @@ if is_pi_desktop; then
         "${USER_HOME}/.config/labwc/autostart" \
         "/etc/xdg/labwc/autostart"; do
         mkdir -p "${dir}"
-        cat > "${dir}/mm-kiosk-browser" <<EOF
+        cat > "${dir}/20-mm-kiosk-browser" <<EOF
 #!/bin/sh
-sleep 8
+sleep 3
 exec ${AUTOSTART_WRAPPER}
 EOF
-        chmod 0755 "${dir}/mm-kiosk-browser"
+        chmod 0755 "${dir}/20-mm-kiosk-browser"
+        rm -f "${dir}/mm-kiosk-browser" 2>/dev/null || true
         if [[ "${dir}" == "${USER_HOME}"* ]]; then
             chown -R "${PRIMARY_USER}:${PRIMARY_USER}" "$(dirname "${dir}")"
         fi
