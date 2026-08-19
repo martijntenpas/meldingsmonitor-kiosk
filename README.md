@@ -2,41 +2,64 @@
 
 Lichte Linux-kiosk voor **Raspberry Pi** en **Intel mini-PC/stick** met:
 
-- automatische **setup-WiFi** als er geen internet is;
+- automatische **setup-WiFi** als er geen internet is (na installatie);
 - **QR-code op het scherm** zolang het kazernescherm nog niet is gekoppeld;
 - **webpagina** om WiFi en kazernescherm-URL in te stellen;
 - **factory reset** via de webinterface;
 - **Chromium kioskmodus** voor het MeldingsMonitor kazernescherm.
 
+Getest op **Raspberry Pi 4B** met Raspberry Pi OS Desktop en Lite (64-bit).
+
 ## Vereisten (apparaat)
 
-Zorg vóór installatie dat het apparaat aan deze basis voldoet:
-
-- **Besturingssysteem:** Debian 12+, Ubuntu 22.04+, of **Raspberry Pi OS Lite** (64-bit aanbevolen)
-- **Netwerk:** WiFi of ethernet (internet tijdens installatie voor pakketten)
+- **Besturingssysteem:** Raspberry Pi OS (Desktop of Lite, 64-bit aanbevolen), Debian 12+ of Ubuntu 22.04+
+- **Netwerk:** internet tijdens installatie (via **ethernet aanbevolen** of WiFi)
 - **Geheugen:** minimaal 2 GB RAM
-- **Toegang:** root/sudo op het apparaat
+- **Toegang:** SSH of toetsenbord + HDMI tijdens eerste setup
 
 Je hoeft **geen** extra software handmatig te installeren — `scripts/install.sh` regelt dat.
 
-## Wat `install.sh` automatisch installeert
+## Schone installatie — Raspberry Pi 4B
 
-Het installatiescript zet alles klaar wat de kiosk nodig heeft:
+### 1. SD-kaart voorbereiden
 
-| Onderdeel | Pakket / actie |
-| --- | --- |
-| WiFi-beheer | `network-manager` (inclusief `nmcli`) |
-| Browser | `chromium` / `chromium-browser` |
-| Desktop voor kiosk | `xorg`, `openbox`, `lightdm`, `unclutter`, `x11-xserver-utils` |
-| Setup-WiFi (access point) | `hostapd`, `dnsmasq` |
-| Provisioning-webapp | `python3`, `python3-venv`, Flask (in venv) |
-| Overig | `curl`, systemd-service, kiosk-gebruiker, autologin, energie-/scherminstellingen |
+1. Flash **Raspberry Pi OS (64-bit)** met [Raspberry Pi Imager](https://www.raspberrypi.com/software/).
+2. Klik op **Instellingen** (tandwiel) en stel in:
+   - hostnaam (bijv. `meldingsmonitor`)
+   - gebruiker en wachtwoord
+   - **SSH inschakelen**
+   - land, tijdzone, toetsenbord
+3. **Netwerk — kies één van deze opties:**
 
-## Installatie
+| Optie | Wanneer | Actie in Imager |
+| --- | --- | --- |
+| **Aanbevolen: ethernet** | Pi staat bij de kazerne met netwerkkabel | Geen WiFi nodig; sluit ethernetkabel aan vóór opstarten |
+| **Alternatief: WiFi** | Geen ethernet beschikbaar | Vul WiFi-SSID en wachtwoord in onder *Draadloos LAN* |
 
-1. Flash **Raspberry Pi OS Lite (64-bit)** of Desktop — beide werken.
-2. Log in via SSH als je gebruiker (bijv. `martijn`).
-3. Clone en installeer:
+> **Let op:** tijdens `install.sh` moet de Pi **internet** hebben om pakketten te downloaden. Zonder ethernet moet WiFi dus **vóór de installatie** werken (via Imager of handmatig na eerste boot).
+
+4. Schrijf de image naar de SD-kaart en plaats die in de Pi.
+
+### 2. Pi opstarten en verbinden
+
+**Met ethernet (aanbevolen):**
+
+1. Sluit HDMI en ethernetkabel aan.
+2. Start de Pi op.
+3. Zoek het IP-adres op (router, `ping meldingsmonitor.local` of `nmap`).
+4. Log in via SSH:
+
+```bash
+ssh meldingsmonitor@<ip-adres-van-pi>
+```
+
+**Zonder ethernet (alleen WiFi):**
+
+1. Controleer dat WiFi in Imager is ingesteld, **of** koppel na eerste boot handmatig via het desktop-netwerkmenu / `nmtui`.
+2. Wacht tot de Pi online is (router of `ping meldingsmonitor.local`).
+3. Log in via SSH (zelfde commando als hierboven).
+
+### 3. Kiosk installeren
 
 ```bash
 git clone https://github.com/martijntenpas/meldingsmonitor-kiosk.git
@@ -45,52 +68,121 @@ sudo bash scripts/install.sh
 sudo reboot
 ```
 
-`install.sh` detecteert automatisch je gebruiker en zet een **opstartsequence** klaar die na login/boot Chromium in kioskmodus opent. Geen aparte `kiosk`-gebruiker nodig.
+`install.sh` detecteert automatisch je gebruiker, stelt het MeldingsMonitor-bureaubladachtergrond in en configureert Chromium-autostart. Geen aparte `kiosk`-gebruiker nodig.
 
-Tijdens installatie moet het apparaat **internet** hebben (via ethernet of WiFi) zodat `apt` de pakketten kan ophalen.
+### 4. Kazernescherm koppelen
 
-## Eerste configuratie
+Na reboot toont het HDMI-scherm een **setup-pagina met QR-code en tekstlink**.
 
-Zolang het kazernescherm nog niet is gekoppeld, toont het scherm een **QR-code** met de setup-link. Scan die met je telefoon om WiFi en de kazernescherm-URL in te stellen.
+1. Scan de QR-code of open op telefoon/laptop: **`http://<ip-adres-van-pi>`**
+2. **WiFi (optioneel):** alleen nodig als je later op WiFi wilt draaien en nog geen verbinding hebt — zie [WiFi wijzigen](#wifi-wijzigen-via-de-webinterface)
+3. Plak de kazernescherm-link uit MeldingsMonitor (`https://meldingsmonitor.nl/kazernescherm/...`)
+4. Klik **Opslaan en starten**
 
-Na **Opslaan en starten** herstart het apparaat automatisch en opent het kazernescherm in fullscreen (geen handmatige actie nodig).
+Het scherm herstart en opent daarna automatisch het kazernescherm in fullscreen.
 
-### Scenario A: geen internet (typisch bij nieuwe stick)
+### Snelle referentie
 
-1. Het scherm toont een QR-code; het apparaat maakt ook WiFi-netwerk **`MeldingsMonitor-Setup-XXXX`**
-2. Scan de QR-code, of verbind handmatig met het setup-netwerk
-3. Open de setup-link (standaard **`http://192.168.4.1`**)
-4. Scan WiFi → kies netwerk → voer wachtwoord in → **WiFi koppelen**
-5. Plak de kazernescherm-link uit MeldingsMonitor
-6. Klik **Opslaan en starten**
+```bash
+# Kazernescherm instellen zonder webinterface (via SSH)
+sudo bash /opt/meldingsmonitor-kiosk/scripts/mm-kiosk-set-homepage.sh \
+  "https://meldingsmonitor.nl/kazernescherm/JOUW_KEY" complete
+sudo reboot
+```
 
-### Scenario B: ethernet of bekende WiFi
+---
 
-1. Open op het apparaat of via het netwerk: **`http://<ip-van-apparaat>`**
-2. Stel URL in en klik **Opslaan en starten**
+## WiFi wijzigen via de webinterface
 
-Apparaten **zonder WiFi** (alleen ethernet) slaan WiFi-instellingen automatisch over. De WiFi-sectie wordt dan verborgen.
+**Ja** — zolang de Pi WiFi-hardware heeft (`wlan0`), kun je WiFi altijd wijzigen via de instellingenpagina:
+
+```
+http://<ip-adres-van-pi>/
+```
+
+Dit werkt **ook na voltooide setup**, zolang `mm-kiosk-web` draait. Open de pagina vanaf je telefoon of laptop in hetzelfde netwerk (de kiosk zelf toont het kazernescherm fullscreen).
+
+1. Open de instellingenpagina
+2. Klik **Opnieuw scannen** bij WiFi
+3. Kies netwerk, voer wachtwoord in
+4. Klik **WiFi koppelen**
+
+De WiFi-sectie wordt **automatisch verborgen** op apparaten zonder WiFi (bijv. alleen ethernet).
+
+> **Tip:** tijdens een WiFi-scan kan het tijdelijke setup-access-point (`MeldingsMonitor-Setup-XXXX`) kort wegvallen als je via dat netwerk verbonden bent. Gebruik bij voorkeur ethernet of het reguliere WiFi-netwerk om instellingen te wijzigen.
+
+---
+
+## Eerste configuratie — scenario's
+
+### Scenario A: ethernet (aanbevolen)
+
+1. Installeer via SSH met ethernet aangesloten
+2. Na reboot: open `http://<ip-adres-van-pi>` op je telefoon/laptop
+3. Plak kazernescherm-link → **Opslaan en starten**
+
+WiFi hoef je niet in te stellen.
+
+### Scenario B: geen internet na installatie (setup-access-point)
+
+1. Het scherm toont QR-code; het apparaat maakt WiFi-netwerk **`MeldingsMonitor-Setup-XXXX`**
+2. Verbind je telefoon met dat netwerk
+3. Open **`http://192.168.4.1`** (of scan de QR-code)
+4. Scan WiFi → kies netwerk → **WiFi koppelen**
+5. Plak kazernescherm-link → **Opslaan en starten**
+
+### Scenario C: WiFi al werkend vóór installatie
+
+1. WiFi ingesteld via Raspberry Pi Imager
+2. Installeer via SSH
+3. Na reboot: open `http://<ip-adres-van-pi>` → kazernescherm-link instellen
+
+---
+
+## Wat `install.sh` automatisch installeert
+
+| Onderdeel | Pakket / actie |
+| --- | --- |
+| WiFi-beheer | `network-manager` (inclusief `nmcli`) |
+| Browser | `chromium` / `chromium-browser` |
+| Pi Desktop | bestaande desktop + autostart, `wtype`, `unclutter` |
+| Pi Lite | `xorg`, `openbox`, `lightdm`, `unclutter`, `feh` |
+| Setup-WiFi (access point) | `hostapd`, `dnsmasq` |
+| Provisioning-webapp | `python3`, `python3-venv`, Flask (in venv) |
+| Overig | `curl`, systemd-service, bureaubladachtergrond, energie-instellingen |
+
+---
 
 ## Updates op een geïnstalleerd apparaat
 
-De systemd-service draait vanuit **`/opt/meldingsmonitor-kiosk`**.
+De provisioning-server draait vanuit **`/opt/meldingsmonitor-kiosk`**.
 
 ```bash
-cd /opt/meldingsmonitor-kiosk
+cd ~/meldingsmonitor-kiosk
+git pull
+sudo bash scripts/mm-kiosk-apply-screen.sh
+sudo reboot
+```
+
+Of alleen bestanden synchroniseren:
+
+```bash
+cd ~/meldingsmonitor-kiosk
 git pull
 sudo bash scripts/mm-kiosk-update.sh
 ```
 
-`mm-kiosk-update.sh` kopieert de nieuwe bestanden, installeert de web-server service en herstart `mm-kiosk-web` + `mm-kiosk`.
+---
 
-### Noodoplossing zonder webinterface
-
-Als de instellingenpagina niet bereikbaar is:
+## Diagnose
 
 ```bash
-sudo bash /opt/meldingsmonitor-kiosk/scripts/mm-kiosk-set-homepage.sh \
-  "https://meldingsmonitor.nl/kazernescherm/JOUW_KEY" complete
+sudo bash /opt/meldingsmonitor-kiosk/scripts/mm-kiosk-diagnose.sh
+sudo systemctl status mm-kiosk-web
+tail -50 /var/log/mm-kiosk-browser.log
 ```
+
+---
 
 ## Setup opnieuw openen
 
@@ -108,8 +200,13 @@ data["setup_completed"] = False
 path.write_text(json.dumps(data, indent=4) + "\n")
 PY
 
-sudo systemctl restart mm-kiosk
+sudo systemctl restart mm-kiosk-web
+sudo reboot
 ```
+
+Factory reset wist ook opgeslagen WiFi-profielen (`mm-kiosk-*`).
+
+---
 
 ## Configuratie
 
@@ -123,22 +220,18 @@ Bestand: `/etc/meldingsmonitor-kiosk/config.json`
 | `force_setup` | Setup-modus forceren |
 | `setup_ap_ip` | Gateway in setup-modus (standaard `192.168.4.1`) |
 
-## Raspberry Pi vs Intel stick
-
-| | Raspberry Pi | Intel stick |
-| --- | --- | --- |
-| OS | Raspberry Pi OS Lite 64-bit | Debian/Ubuntu minimal |
-| Browser | `chromium-browser` | `chromium` |
-| WiFi | `wlan0` | vaak `wlan0` / `wlp*` |
-| Installatie | zelfde `install.sh` | zelfde `install.sh` |
+---
 
 ## Architectuur
 
 ```
-mm-kiosk-web.service          → instellingenpagina (poort 80)
-gebruiker@autostart           → Chromium kiosk op HDMI na boot/login
-  └── mm-kiosk-launch-browser.sh
+mm-kiosk-web.service              → instellingenpagina (poort 80)
+gebruiker@autostart / labwc        → Chromium kiosk op HDMI na boot/login
+  └── mm-kiosk-autostart.sh
+        └── mm-kiosk-launch-browser.sh
 ```
+
+---
 
 ## Energie en scherm (24/7)
 
@@ -148,13 +241,17 @@ De installer schakelt automatisch uit:
 - DPMS (monitor uitschakelen)
 - slaapstand, suspend en hibernate (systemd)
 
-Script: `scripts/mm-kiosk-power-settings.sh` (draait bij installatie en elke kiosk-start).
+Script: `scripts/mm-kiosk-power-settings.sh`
+
+---
 
 ## Bekende beperkingen (v1)
 
 - WiFi-scan stopt tijdelijk het setup-access-point (telefoon kan verbinding verliezen).
 - WiFi-koppeling werkt via **NetworkManager** (`nmcli`); andere netwerkstacks worden niet ondersteund.
 - De instellingenpagina op poort 80 is bereikbaar op het lokale netwerk (zonder wachtwoord).
+
+---
 
 ## Ontwikkeling
 
