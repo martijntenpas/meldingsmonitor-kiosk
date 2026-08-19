@@ -39,6 +39,10 @@ BASE_PACKAGES=(
     unclutter
 )
 
+if is_pi_desktop; then
+    BASE_PACKAGES+=(wtype)
+fi
+
 apt-get install -y "${BASE_PACKAGES[@]}"
 
 if is_pi_desktop; then

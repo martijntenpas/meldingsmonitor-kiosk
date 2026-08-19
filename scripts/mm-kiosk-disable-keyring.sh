@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Schakelt keyring-popups uit voor de kiosk-gebruiker.
+# Schakelt keyring-popups uit en configureert Chromium voor kiosk-gebruik.
 
 set -euo pipefail
 
@@ -30,8 +30,27 @@ done
 cat > "${USER_HOME}/.config/chromium-flags.conf" <<'EOF'
 --password-store=basic
 --use-mock-keychain
+--disable-translate
+--disable-features=Translate,TranslateUI,TranslateNewUI,TranslateBubble
+--lang=nl
+--accept-lang=nl-NL,nl,en-US,en
 EOF
+
+for policy_dir in \
+    /etc/chromium/policies/managed \
+    /etc/chromium-browser/policies/managed; do
+    mkdir -p "${policy_dir}"
+    cat > "${policy_dir}/meldingsmonitor-kiosk.json" <<'EOF'
+{
+    "TranslateEnabled": false,
+    "DefaultNotificationsSetting": 2,
+    "BrowserSignin": 0,
+    "AutofillAddressEnabled": false,
+    "AutofillCreditCardEnabled": false
+}
+EOF
+done
 
 chown -R "${TARGET_USER}:${TARGET_USER}" "${USER_HOME}/.config"
 
-log "Keyring-popups uitgeschakeld voor ${TARGET_USER}."
+log "Chromium kiosk-configuratie toegepast voor ${TARGET_USER}."

@@ -33,6 +33,10 @@ chown "${PRIMARY_USER}:${PRIMARY_USER}" /var/log/mm-kiosk-browser.log
 
 bash "${SCRIPT_DIR}/mm-kiosk-disable-keyring.sh" "${PRIMARY_USER}"
 
+if is_pi_desktop; then
+    bash "${SCRIPT_DIR}/mm-kiosk-configure-labwc-cursor.sh" "${PRIMARY_USER}"
+fi
+
 mkdir -p "${USER_HOME}/.config/autostart" "${USER_HOME}/.config/systemd/user"
 
 cat > "${USER_HOME}/.config/autostart/mm-kiosk-browser.desktop" <<EOF
