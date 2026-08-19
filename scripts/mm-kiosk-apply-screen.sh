@@ -19,6 +19,8 @@ fi
 PRIMARY_USER="$(detect_primary_user || cat /etc/meldingsmonitor-kiosk/primary-user 2>/dev/null || true)"
 bash "${SCRIPT_DIR}/mm-kiosk-setup-user-session.sh" "${PRIMARY_USER:-}"
 
+bash "${SCRIPT_DIR}/mm-kiosk-set-wallpaper.sh" "${PRIMARY_USER:-}"
+
 systemctl restart mm-kiosk-web.service 2>/dev/null || true
 
 echo
