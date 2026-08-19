@@ -7,7 +7,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=lib/common.sh
 source "${SCRIPT_DIR}/lib/common.sh"
 
-KIOSK_USER="${MM_KIOSK_USER:-kiosk}"
+KIOSK_USER="${MM_KIOSK_USER:-$(cat /etc/meldingsmonitor-kiosk/primary-user 2>/dev/null || detect_primary_user || echo kiosk)}"
 DISPLAY="${DISPLAY:-:0}"
 
 echo "==> MeldingsMonitor kiosk diagnose"
@@ -39,6 +39,24 @@ if pgrep -f chromium >/dev/null 2>&1; then
 else
     echo "Chromium: niet gevonden"
 fi
+
+echo "Browser-log ($(wc -l < /var/log/mm-kiosk-browser.log 2>/dev/null || echo 0) regels):"
+tail -10 /var/log/mm-kiosk-browser.log 2>/dev/null || echo "  geen browser-log"
+echo
+
+echo "Autostart-bestanden voor ${KIOSK_USER}:"
+USER_HOME="$(getent passwd "${KIOSK_USER}" 2>/dev/null | cut -d: -f6 || true)"
+for path in \
+    "${USER_HOME}/.config/autostart/mm-kiosk-browser.desktop" \
+    "${USER_HOME}/.config/labwc/autostart/mm-kiosk-browser" \
+    "${USER_HOME}/.config/systemd/user/mm-kiosk-browser.service"; do
+    if [[ -f "${path}" ]]; then
+        echo "  OK: ${path}"
+    else
+        echo "  ontbreekt: ${path}"
+    fi
+done
+echo "systemd user browser: $(systemctl --user is-active mm-kiosk-browser.service 2>/dev/null || echo niet actief)"
 
 echo "Ingelogde gebruiker op scherm: $(who | awk 'NR==1 {print $1}')"
 echo

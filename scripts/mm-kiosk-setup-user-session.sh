@@ -33,32 +33,68 @@ chown "${PRIMARY_USER}:${PRIMARY_USER}" /var/log/mm-kiosk-browser.log
 
 bash "${SCRIPT_DIR}/mm-kiosk-disable-keyring.sh" "${PRIMARY_USER}"
 
-if is_pi_desktop; then
-    mkdir -p "${USER_HOME}/.config/labwc/autostart" \
-        "${USER_HOME}/.config/lxsession/LXDE-pi/autostart"
+mkdir -p "${USER_HOME}/.config/autostart" "${USER_HOME}/.config/systemd/user"
 
+cat > "${USER_HOME}/.config/autostart/mm-kiosk-browser.desktop" <<EOF
+[Desktop Entry]
+Type=Application
+Name=MeldingsMonitor Kazernescherm
+Exec=/bin/bash -lc 'sleep 8; exec ${AUTOSTART_WRAPPER}'
+X-GNOME-Autostart-enabled=true
+Hidden=false
+NoDisplay=false
+EOF
+
+cat > "${USER_HOME}/.config/systemd/user/mm-kiosk-browser.service" <<EOF
+[Unit]
+Description=MeldingsMonitor kazernescherm
+After=network-online.target graphical-session.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+Environment=XDG_RUNTIME_DIR=/run/user/${USER_ID}
+ExecStartPre=/bin/sleep 12
+ExecStart=${AUTOSTART_WRAPPER}
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=default.target
+EOF
+
+if is_pi_desktop; then
     for dir in \
         "${USER_HOME}/.config/labwc/autostart" \
-        "${USER_HOME}/.config/lxsession/LXDE-pi/autostart"; do
+        "/etc/xdg/labwc/autostart"; do
+        mkdir -p "${dir}"
         cat > "${dir}/mm-kiosk-browser" <<EOF
 #!/bin/sh
-sleep 5
-${AUTOSTART_WRAPPER} &
+sleep 8
+exec ${AUTOSTART_WRAPPER}
 EOF
         chmod 0755 "${dir}/mm-kiosk-browser"
+        if [[ "${dir}" == "${USER_HOME}"* ]]; then
+            chown -R "${PRIMARY_USER}:${PRIMARY_USER}" "$(dirname "${dir}")"
+        fi
     done
 
-    rm -f "${USER_HOME}/.config/autostart/mm-kiosk-browser.desktop"
-    rm -f "${USER_HOME}/.config/systemd/user/mm-kiosk-browser.service"
+    LXSESSION_DIR="${USER_HOME}/.config/lxsession/LXDE-pi"
+    mkdir -p "${LXSESSION_DIR}"
+    LXSESSION_FILE="${LXSESSION_DIR}/autostart"
 
-    if [[ -d "/run/user/${USER_ID}" ]]; then
-        sudo -u "${PRIMARY_USER}" \
-            XDG_RUNTIME_DIR="/run/user/${USER_ID}" \
-            systemctl --user disable mm-kiosk-browser.service 2>/dev/null || true
+    if [[ -d "${LXSESSION_FILE}" ]]; then
+        rm -rf "${LXSESSION_FILE}"
     fi
-else
-    mkdir -p "${USER_HOME}/.config/systemd/user" "${USER_HOME}/.config/autostart"
 
+    if [[ -f "${LXSESSION_FILE}" ]] && ! grep -q 'mm-kiosk-autostart.sh' "${LXSESSION_FILE}"; then
+        echo "@${AUTOSTART_WRAPPER}" >> "${LXSESSION_FILE}"
+    elif [[ ! -e "${LXSESSION_FILE}" ]]; then
+        echo "@${AUTOSTART_WRAPPER}" > "${LXSESSION_FILE}"
+    fi
+
+    rm -rf "${LXSESSION_DIR}/autostart/mm-kiosk-browser" 2>/dev/null || true
+else
     cat > "${USER_HOME}/.config/systemd/user/mm-kiosk-browser.service" <<EOF
 [Unit]
 Description=MeldingsMonitor kazernescherm
@@ -68,6 +104,7 @@ Wants=network-online.target
 [Service]
 Type=simple
 Environment=DISPLAY=:0
+Environment=XDG_RUNTIME_DIR=/run/user/${USER_ID}
 ExecStartPre=/bin/sleep 8
 ExecStart=${AUTOSTART_WRAPPER}
 Restart=always
@@ -76,27 +113,17 @@ RestartSec=5
 [Install]
 WantedBy=default.target
 EOF
+fi
 
-    cat > "${USER_HOME}/.config/autostart/mm-kiosk-browser.desktop" <<EOF
-[Desktop Entry]
-Type=Application
-Name=MeldingsMonitor Kazernescherm
-Exec=${AUTOSTART_WRAPPER}
-X-GNOME-Autostart-enabled=true
-Hidden=false
-NoDisplay=false
-EOF
+loginctl enable-linger "${PRIMARY_USER}" 2>/dev/null || true
 
-    loginctl enable-linger "${PRIMARY_USER}" 2>/dev/null || true
-
-    if [[ -d "/run/user/${USER_ID}" ]]; then
-        sudo -u "${PRIMARY_USER}" \
-            XDG_RUNTIME_DIR="/run/user/${USER_ID}" \
-            systemctl --user daemon-reload 2>/dev/null || true
-        sudo -u "${PRIMARY_USER}" \
-            XDG_RUNTIME_DIR="/run/user/${USER_ID}" \
-            systemctl --user enable mm-kiosk-browser.service 2>/dev/null || true
-    fi
+if [[ -d "/run/user/${USER_ID}" ]]; then
+    sudo -u "${PRIMARY_USER}" \
+        XDG_RUNTIME_DIR="/run/user/${USER_ID}" \
+        systemctl --user daemon-reload 2>/dev/null || true
+    sudo -u "${PRIMARY_USER}" \
+        XDG_RUNTIME_DIR="/run/user/${USER_ID}" \
+        systemctl --user enable --now mm-kiosk-browser.service 2>/dev/null || true
 fi
 
 chown -R "${PRIMARY_USER}:${PRIMARY_USER}" "${USER_HOME}/.config"
